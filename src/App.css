@@ -216,6 +216,26 @@ h1 {
   opacity: 0.45;
 }
 
+.instrument-control {
+  gap: 0.65rem;
+}
+
+.instrument-select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+}
+
+.instrument-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
 .btn {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -633,6 +653,14 @@ h1 {
   border-top: 1px solid var(--border);
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.app--demo .footer.site-footer {
+  text-align: center;
+}
+
+.app--demo .footer.site-footer .site-footer__copy {
+  margin-top: 0;
 }
 
 .footer code {

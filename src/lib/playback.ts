@@ -1,11 +1,17 @@
 import * as Tone from 'tone';
+import type { Sampler } from 'tone';
 import type { Note } from '../types';
-import { createGuitarSampler } from './guitar-sampler';
+import {
+  createInstrumentSampler,
+  INSTRUMENTS,
+  instrumentVolume,
+  type InstrumentId,
+} from './instruments';
+import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sample-cache';
 
-type GuitarPlayer = ReturnType<typeof createGuitarSampler>;
-
-let guitar: GuitarPlayer | null = null;
-let guitarReady: Promise<GuitarPlayer> | null = null;
+let currentInstrumentId: InstrumentId = 'nylon';
+const players: Partial<Record<InstrumentId, Sampler>> = {};
+const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
 let scheduledIds: number[] = [];
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
@@ -24,33 +30,68 @@ async function ensureAudioReady(): Promise<void> {
   }
 }
 
-function loadGuitar(): Promise<GuitarPlayer> {
-  if (guitar?.loaded) {
-    return Promise.resolve(guitar);
+function loadInstrument(id: InstrumentId): Promise<Sampler> {
+  const cached = players[id];
+  if (cached?.loaded) {
+    return Promise.resolve(cached);
   }
 
-  if (!guitarReady) {
-    guitarReady = new Promise((resolve) => {
-      const instrument = createGuitarSampler(() => {
-        instrument.volume.value = -2;
-        guitar = instrument;
-        resolve(instrument);
-      });
-      instrument.toDestination();
+  const pending = loadPromises[id];
+  if (pending) return pending;
+
+  const promise = new Promise<Sampler>((resolve) => {
+    const instrument = createInstrumentSampler(id, () => {
+      instrument.volume.value = instrumentVolume(id);
+      players[id] = instrument;
+      resolve(instrument);
     });
-  }
+    instrument.toDestination();
+  });
 
-  return guitarReady;
+  loadPromises[id] = promise;
+  return promise;
 }
 
-async function ensureGuitar(): Promise<GuitarPlayer> {
+async function ensurePlayer(): Promise<Sampler> {
   await ensureAudioReady();
-  return loadGuitar();
+  return loadInstrument(currentInstrumentId);
 }
 
-/** Load guitar samples early (e.g. on /app mount) to reduce first-play latency. */
+function activePlayer(): Sampler | null {
+  return players[currentInstrumentId] ?? null;
+}
+
+/** Switch playback instrument (stops current audio). */
+export function setPlaybackInstrument(id: InstrumentId): void {
+  if (id === currentInstrumentId) return;
+  stopPlayback();
+  currentInstrumentId = id;
+  void loadInstrument(id);
+}
+
+/** Load samples early to reduce first-play latency. */
+export function preloadInstrument(id: InstrumentId = currentInstrumentId): void {
+  void loadInstrument(id);
+}
+
+/** Cache sample MP3s and decode all instruments in the background. */
+export function preloadAllInstruments(priorityId: InstrumentId = currentInstrumentId): void {
+  void (async () => {
+    await registerSampleCache();
+    await warmInstrumentCache(priorityId);
+    await loadInstrument(priorityId);
+    await warmSampleCache();
+    await Promise.all(
+      INSTRUMENTS.filter((item) => item.id !== priorityId).map((item) =>
+        loadInstrument(item.id)
+      )
+    );
+  })();
+}
+
+/** @deprecated Use preloadInstrument */
 export function preloadGuitar(): void {
-  void loadGuitar();
+  preloadInstrument('nylon');
 }
 
 /** Safari suspends audio when the tab is hidden; resume and reset on return. */
@@ -165,7 +206,7 @@ function buildSchedule(
 }
 
 function schedulePass(
-  player: GuitarPlayer,
+  player: Sampler,
   notes: Note[],
   bpm: number,
   swing: SwingAmount,
@@ -210,10 +251,10 @@ export async function playNotes(
   stopPlayback();
   loopActive = loop;
 
-  const player = await ensureGuitar();
+  const player = await ensurePlayer();
 
   const runPass = (isRepeat = false) => {
-    guitar?.releaseAll();
+    activePlayer()?.releaseAll();
     let cycleNotes = isRepeat ? skipLeadingRests(notes) : notes;
     if (loop) {
       cycleNotes = notesForLoopCycle(cycleNotes);
@@ -237,15 +278,19 @@ export function stopPlayback(): void {
   loopActive = false;
   scheduledIds.forEach((id) => window.clearTimeout(id));
   scheduledIds = [];
-  guitar?.releaseAll();
+  activePlayer()?.releaseAll();
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
 }
 
 export function disposePlayback(): void {
   stopPlayback();
-  guitar?.dispose();
-  guitar = null;
-  guitarReady = null;
+  for (const player of Object.values(players)) {
+    player?.dispose();
+  }
+  for (const key of Object.keys(players) as InstrumentId[]) {
+    delete players[key];
+    delete loadPromises[key];
+  }
   onInterrupted = null;
 }

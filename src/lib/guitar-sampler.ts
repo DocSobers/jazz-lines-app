@@ -87,6 +87,10 @@ function tunedUrls(): Record<string, string> {
   return urls;
 }
 
+export function nylonSampleUrls(): string[] {
+  return Object.values(tunedUrls());
+}
+
 export function createGuitarSampler(onload?: () => void): Sampler {
   return new Sampler({
     urls: tunedUrls(),

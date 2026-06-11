@@ -16,7 +16,9 @@
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
     "tone": "^15.1.22",
+    "tonejs-instrument-flute-mp3": "^1.1.2",
     "tonejs-instrument-guitar-nylon-mp3": "^1.1.1",
+    "tonejs-instrument-piano-mp3": "^1.1.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

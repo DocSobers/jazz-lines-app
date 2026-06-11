@@ -6,6 +6,7 @@ import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
 import { buildDemoChain, DEMO_IDIOM_IDS } from './lib/demo-idioms';
+import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
 import { REFERENCE_KEY, semitonesFromReference, type WheelKey } from './lib/keys';
 import { IDIOM_SECTIONS, JAZZ_IDIOMS, PROGRESSION } from './data/jazz-idioms';
 import {
@@ -27,7 +28,8 @@ import {
   disposePlayback,
   initPlaybackLifecycle,
   playNotes,
-  preloadGuitar,
+  preloadAllInstruments,
+  setPlaybackInstrument,
   stopPlayback,
 } from './lib/playback';
 import type { ChainItem, Example, Note } from './types';
@@ -118,6 +120,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
   const [lineLoop, setLineLoop] = useState(false);
+  const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
 
   const baseIdioms = useMemo(() => {
@@ -249,13 +252,17 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   };
 
   useEffect(() => {
-    preloadGuitar();
+    preloadAllInstruments(instrument);
     const endLifecycle = initPlaybackLifecycle(() => setPlaying(false));
     return () => {
       endLifecycle();
       disposePlayback();
     };
   }, []);
+
+  useEffect(() => {
+    setPlaybackInstrument(instrument);
+  }, [instrument]);
 
   useEffect(() => {
     if (demoMode) {
@@ -289,7 +296,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   useEffect(() => {
     stopPlayback();
     setPlaying(false);
-  }, [lineNotes, bpm, swing, transposeSemitones]);
+  }, [lineNotes, bpm, swing, transposeSemitones, instrument]);
 
   const chainEnd =
     chain.length > 0 ? endPitchClass(chain[chain.length - 1].example) : null;
@@ -311,7 +318,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   );
 
   return (
-    <div className="app">
+    <div className={`app${demoMode ? ' app--demo' : ''}`}>
       <NavBar edits={edits} clerkEnabled={clerkEnabled} isAdmin={canEdit} />
 
       <header className="header">
@@ -326,6 +333,21 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         </div>
         <KeyWheel selectedKey={selectedKey} onChange={setSelectedKey} />
         <div className="transport">
+          <label className="bpm-control instrument-control">
+            Sound
+            <select
+              className="instrument-select"
+              value={instrument}
+              onChange={(e) => setInstrument(e.target.value as InstrumentId)}
+              aria-label="Playback instrument"
+            >
+              {INSTRUMENTS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="bpm-control">
             BPM
             <input
@@ -528,11 +550,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       })}
 
       <SiteFooter variant="app">
-        <p>
-          Data from <code>jazz_idoms.xlsx</code>. Edits save in this browser; admins
-          can <strong>Export XLSX</strong>, replace the project file, then run{' '}
-          <code>npm run import-idioms</code>.
-        </p>
+        {!demoMode && (
+          <p>
+            Data from <code>jazz_idoms.xlsx</code>. Edits save in this browser; admins
+            can <strong>Export XLSX</strong>, replace the project file, then run{' '}
+            <code>npm run import-idioms</code>.
+          </p>
+        )}
       </SiteFooter>
 
       {canEdit && editingExample && (
