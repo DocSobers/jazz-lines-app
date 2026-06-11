@@ -2,6 +2,7 @@ import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ExampleEditor from './components/ExampleEditor';
 import KeyWheel from './components/KeyWheel';
+import StaffCard from './components/StaffCard';
 import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
@@ -47,21 +48,23 @@ const SECTION_LABELS: Record<(typeof IDIOM_SECTIONS)[number], string> = {
 function ExampleCard({
   example,
   onPlay,
+  onStaff,
   onEdit,
   onAdd,
   canAdd,
   canEdit,
-  disabled,
+  inLine,
   highlight,
   edited,
 }: {
   example: Example;
   onPlay: () => void;
+  onStaff: () => void;
   onEdit: () => void;
   onAdd: () => void;
   canAdd: boolean;
   canEdit: boolean;
-  disabled?: boolean;
+  inLine?: boolean;
   highlight?: boolean;
   edited?: boolean;
 }) {
@@ -70,7 +73,7 @@ function ExampleCard({
 
   return (
     <article
-      className={`example-card ${highlight ? 'example-card--highlight' : ''} ${disabled ? 'example-card--disabled' : ''}`}
+      className={`example-card ${highlight ? 'example-card--highlight' : ''}`}
     >
       <div className="example-card__header">
         <span className="example-card__section">{example.section}</span>
@@ -83,6 +86,15 @@ function ExampleCard({
         <span className="example-card__count">{example.notes.length} notes</span>
       </p>
       <div className="example-card__actions">
+        <button
+          type="button"
+          className="btn btn--ghost btn--clef"
+          onClick={onStaff}
+          aria-label="View staff notation"
+          title="Staff notation"
+        >
+          𝄞
+        </button>
         <button type="button" className="btn btn--ghost" onClick={onPlay}>
           Play
         </button>
@@ -96,7 +108,7 @@ function ExampleCard({
             type="button"
             className="btn btn--primary"
             onClick={onAdd}
-            disabled={disabled}
+            disabled={inLine}
           >
             Add to line
           </button>
@@ -115,6 +127,7 @@ interface AppShellProps {
 function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [edits, setEdits] = useState<ExampleEdits>(loadEdits);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
   const [chain, setChain] = useState<ChainItem[]>([]);
   const [bpm, setBpm] = useState(120);
   const [swing, setSwing] = useState(100);
@@ -163,18 +176,6 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   );
 
   const handlePlayExample = (example: Example) => {
-    const chainIndex = chain.findIndex((item) => item.example.id === example.id);
-
-    if (chainIndex >= 0) {
-      void play(flattenChain(chain.slice(0, chainIndex + 1)));
-      return;
-    }
-
-    if (chain.length > 0) {
-      void play(flattenChain([...chain, { example, octave: 0 }]));
-      return;
-    }
-
     void play(prependPickup(example.notes, example.pickupBeat));
   };
 
@@ -217,6 +218,8 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const editingExample = editingId
     ? baseIdioms.find((e) => e.id === editingId) ?? null
     : null;
+
+  const staffExample = staffId ? idioms.find((e) => e.id === staffId) ?? null : null;
 
   const handlePlayChain = () => {
     if (lineNotes.length === 0) return;
@@ -327,7 +330,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           <h1>Jazz Lines Player</h1>
           <p className="subtitle">
             {demoMode
-              ? 'II–V #1a and #2 are loaded as one line — sign up to unlock all idioms'
+              ? 'Play II–V #1a or #2 individually, or use Play line for both together — sign up to unlock all idioms'
               : 'Build a full ii–V–I line across sections, or chain any idioms freely'}
           </p>
         </div>
@@ -496,6 +499,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                 key={example.id}
                 example={example}
                 onPlay={() => handlePlayExample(example)}
+                onStaff={() => setStaffId(example.id)}
                 onEdit={() => setEditingId(example.id)}
                 onAdd={() => handleAdd(example)}
                 canAdd
@@ -535,11 +539,12 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                     key={example.id}
                     example={example}
                     onPlay={() => handlePlayExample(example)}
+                    onStaff={() => setStaffId(example.id)}
                     onEdit={() => setEditingId(example.id)}
                     onAdd={() => handleAdd(example)}
                     canAdd={!inChain}
                     canEdit={canEdit}
-                    disabled={inChain}
+                    inLine={inChain}
                     edited={Boolean(edits[example.id])}
                   />
                 );
@@ -558,6 +563,10 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           </p>
         )}
       </SiteFooter>
+
+      {staffExample && (
+        <StaffCard example={staffExample} onClose={() => setStaffId(null)} />
+      )}
 
       {canEdit && editingExample && (
         <ExampleEditor

@@ -19,6 +19,7 @@
     "tonejs-instrument-flute-mp3": "^1.1.2",
     "tonejs-instrument-guitar-nylon-mp3": "^1.1.1",
     "tonejs-instrument-piano-mp3": "^1.1.2",
+    "vexflow": "^5.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
