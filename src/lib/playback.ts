@@ -1,8 +1,8 @@
 import * as Tone from 'tone';
-import GuitarNylonMp3 from 'tonejs-instrument-guitar-nylon-mp3';
 import type { Note } from '../types';
+import { createGuitarSampler } from './guitar-sampler';
 
-type GuitarPlayer = GuitarNylonMp3;
+type GuitarPlayer = ReturnType<typeof createGuitarSampler>;
 
 let guitar: GuitarPlayer | null = null;
 let guitarReady: Promise<GuitarPlayer> | null = null;
@@ -27,12 +27,10 @@ function loadGuitar(): Promise<GuitarPlayer> {
 
   if (!guitarReady) {
     guitarReady = new Promise((resolve) => {
-      const instrument = new GuitarNylonMp3({
-        onload: () => {
-          instrument.volume.value = -2;
-          guitar = instrument;
-          resolve(instrument);
-        },
+      const instrument = createGuitarSampler(() => {
+        instrument.volume.value = -2;
+        guitar = instrument;
+        resolve(instrument);
       });
       instrument.toDestination();
     });

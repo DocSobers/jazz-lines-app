@@ -1,5 +1,15 @@
+import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import ExampleEditor from './components/ExampleEditor';
+import NavBar from './components/NavBar';
+import { isAdminUser } from './lib/auth';
 import { IDIOM_SECTIONS, JAZZ_IDIOMS, PROGRESSION } from './data/jazz-idioms';
+import {
+  applyEdits,
+  loadEdits,
+  persistEdits,
+  type ExampleEdits,
+} from './lib/example-edits';
 import { findCompatibleNext } from './lib/join';
 import {
   endPitchClass,
@@ -14,11 +24,11 @@ import {
   playNotes,
   stopPlayback,
 } from './lib/playback';
-import type { ChainItem, Example } from './types';
+import type { ChainItem, Example, Note } from './types';
+import './App.css';
 
 const OCTAVE_MIN = -3;
 const OCTAVE_MAX = 3;
-import './App.css';
 
 const SECTION_LABELS: Record<(typeof IDIOM_SECTIONS)[number], string> = {
   'II-V': 'II–V',
@@ -29,17 +39,23 @@ const SECTION_LABELS: Record<(typeof IDIOM_SECTIONS)[number], string> = {
 function ExampleCard({
   example,
   onPlay,
+  onEdit,
   onAdd,
   canAdd,
+  canEdit,
   disabled,
   highlight,
+  edited,
 }: {
   example: Example;
   onPlay: () => void;
+  onEdit: () => void;
   onAdd: () => void;
   canAdd: boolean;
+  canEdit: boolean;
   disabled?: boolean;
   highlight?: boolean;
+  edited?: boolean;
 }) {
   const start = startPitchClass(example);
   const end = endPitchClass(example);
@@ -52,6 +68,7 @@ function ExampleCard({
         <span className="example-card__section">{example.section}</span>
         <span className="example-card__number">#{example.number}</span>
         <h3>{example.label}</h3>
+        {edited && <span className="example-card__edited">edited</span>}
       </div>
       <p className="example-card__meta">
         {formatPitchClass(start)} → {formatPitchClass(end)}
@@ -61,6 +78,11 @@ function ExampleCard({
         <button type="button" className="btn btn--ghost" onClick={onPlay}>
           Play
         </button>
+        {canEdit && (
+          <button type="button" className="btn btn--ghost" onClick={onEdit}>
+            Edit
+          </button>
+        )}
         {canAdd && (
           <button
             type="button"
@@ -76,17 +98,26 @@ function ExampleCard({
   );
 }
 
-export default function App() {
+interface AppShellProps {
+  clerkEnabled: boolean;
+  canEdit: boolean;
+}
+
+function AppShell({ clerkEnabled, canEdit }: AppShellProps) {
+  const [edits, setEdits] = useState<ExampleEdits>(loadEdits);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [chain, setChain] = useState<ChainItem[]>([]);
   const [bpm, setBpm] = useState(120);
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
 
+  const idioms = useMemo(() => applyEdits(JAZZ_IDIOMS, edits), [edits]);
+
   const chainExamples = useMemo(() => chain.map((item) => item.example), [chain]);
 
   const compatible = useMemo(
-    () => findCompatibleNext(chainExamples, JAZZ_IDIOMS),
-    [chainExamples]
+    () => findCompatibleNext(chainExamples, idioms),
+    [chainExamples, idioms]
   );
 
   const compatibleIds = useMemo(
@@ -107,6 +138,46 @@ export default function App() {
   const handlePlayExample = (example: Example) => {
     void play(prependPickup(example.notes, example.pickupBeat));
   };
+
+  const handlePlayDraft = (notes: Note[], pickupBeat?: number) => {
+    void play(prependPickup(notes, pickupBeat));
+  };
+
+  const syncChainExample = (example: Example) => {
+    setChain((prev) =>
+      prev.map((item) =>
+        item.example.id === example.id ? { ...item, example } : item
+      )
+    );
+  };
+
+  const handleSaveEdit = (id: string, notes: Note[], pickupBeat?: number) => {
+    const base = JAZZ_IDIOMS.find((e) => e.id === id);
+    if (!base) return;
+
+    const nextEdits = {
+      ...edits,
+      [id]: { notes, pickupBeat },
+    };
+    setEdits(nextEdits);
+    persistEdits(nextEdits);
+
+    const updated = applyEdits([base], nextEdits)[0];
+    syncChainExample(updated);
+  };
+
+  const handleResetEdit = (id: string) => {
+    const { [id]: _, ...rest } = edits;
+    setEdits(rest);
+    persistEdits(rest);
+
+    const base = JAZZ_IDIOMS.find((e) => e.id === id);
+    if (base) syncChainExample(base);
+  };
+
+  const editingExample = editingId
+    ? idioms.find((e) => e.id === editingId) ?? null
+    : null;
 
   const handlePlayChain = () => {
     if (lineNotes.length === 0) return;
@@ -170,6 +241,8 @@ export default function App() {
 
   return (
     <div className="app">
+      <NavBar edits={edits} clerkEnabled={clerkEnabled} isAdmin={canEdit} />
+
       <header className="header">
         <div>
           <p className="eyebrow">ii–V–I idioms</p>
@@ -317,9 +390,12 @@ export default function App() {
                 key={example.id}
                 example={example}
                 onPlay={() => handlePlayExample(example)}
+                onEdit={() => setEditingId(example.id)}
                 onAdd={() => handleAdd(example)}
                 canAdd
+                canEdit={canEdit}
                 highlight
+                edited={Boolean(edits[example.id])}
               />
             ))}
           </div>
@@ -327,7 +403,7 @@ export default function App() {
       )}
 
       {IDIOM_SECTIONS.map((section) => {
-        const sectionExamples = JAZZ_IDIOMS.filter((e) => e.section === section);
+        const sectionExamples = idioms.filter((e) => e.section === section);
         const isNextInProgression = nextProgressionSection === section && chain.length > 0;
 
         return (
@@ -352,9 +428,12 @@ export default function App() {
                     key={example.id}
                     example={example}
                     onPlay={() => handlePlayExample(example)}
+                    onEdit={() => setEditingId(example.id)}
                     onAdd={() => handleAdd(example)}
                     canAdd={!inChain}
+                    canEdit={canEdit}
                     disabled={inChain}
+                    edited={Boolean(edits[example.id])}
                   />
                 );
               })}
@@ -365,10 +444,35 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Data from <code>jazz_idoms.xlsx</code> — run{' '}
-          <code>npm run import-idioms</code> after updating the spreadsheet.
+          Data from <code>jazz_idoms.xlsx</code>. Edits save in this browser; admins
+          can <strong>Export XLSX</strong>, replace the project file, then run{' '}
+          <code>npm run import-idioms</code>.
         </p>
       </footer>
+
+      {canEdit && editingExample && (
+        <ExampleEditor
+          example={editingExample}
+          isCustomized={Boolean(edits[editingExample.id])}
+          onClose={() => setEditingId(null)}
+          onSave={(notes, pickupBeat) =>
+            handleSaveEdit(editingExample.id, notes, pickupBeat)
+          }
+          onReset={() => handleResetEdit(editingExample.id)}
+          onPlay={handlePlayDraft}
+        />
+      )}
     </div>
   );
+}
+
+function AppWithClerk() {
+  const { user, isLoaded } = useUser();
+  const canEdit = isLoaded && isAdminUser(user);
+  return <AppShell clerkEnabled canEdit={canEdit} />;
+}
+
+export default function App({ clerkEnabled = false }: { clerkEnabled?: boolean }) {
+  if (clerkEnabled) return <AppWithClerk />;
+  return <AppShell clerkEnabled={false} canEdit={false} />;
 }
