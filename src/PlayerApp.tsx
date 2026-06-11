@@ -5,7 +5,7 @@ import KeyWheel from './components/KeyWheel';
 import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
-import { DEMO_IDIOM_IDS } from './lib/demo-idioms';
+import { buildDemoChain, DEMO_IDIOM_IDS } from './lib/demo-idioms';
 import { REFERENCE_KEY, semitonesFromReference, type WheelKey } from './lib/keys';
 import { IDIOM_SECTIONS, JAZZ_IDIOMS, PROGRESSION } from './data/jazz-idioms';
 import {
@@ -118,7 +118,6 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
   const [lineLoop, setLineLoop] = useState(false);
-  const [loopGapBeats, setLoopGapBeats] = useState(2);
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
 
   const baseIdioms = useMemo(() => {
@@ -155,19 +154,24 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const play = useCallback(
     async (notes: Example['notes'], loop = false) => {
       setPlaying(true);
-      await playNotes(
-        notes,
-        bpm,
-        () => setPlaying(false),
-        swing / 100,
-        loop,
-        loop ? loopGapBeats : 0
-      );
+      await playNotes(notes, bpm, () => setPlaying(false), swing / 100, loop);
     },
-    [bpm, swing, loopGapBeats]
+    [bpm, swing]
   );
 
   const handlePlayExample = (example: Example) => {
+    const chainIndex = chain.findIndex((item) => item.example.id === example.id);
+
+    if (chainIndex >= 0) {
+      void play(flattenChain(chain.slice(0, chainIndex + 1)));
+      return;
+    }
+
+    if (chain.length > 0) {
+      void play(flattenChain([...chain, { example, octave: 0 }]));
+      return;
+    }
+
     void play(prependPickup(example.notes, example.pickupBeat));
   };
 
@@ -228,7 +232,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const handleClear = () => {
     stopPlayback();
     setPlaying(false);
-    setChain([]);
+    setChain(demoMode ? buildDemoChain(idioms) : []);
   };
 
   const adjustItemOctave = (index: number, delta: number) => {
@@ -254,6 +258,24 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   }, []);
 
   useEffect(() => {
+    if (demoMode) {
+      setChain((prev) => {
+        const isDemoLine =
+          prev.length === 2 &&
+          prev[0]?.example.id === DEMO_IDIOM_IDS[0] &&
+          prev[1]?.example.id === DEMO_IDIOM_IDS[1];
+        if (prev.length === 0 || isDemoLine) {
+          return buildDemoChain(idioms);
+        }
+        return prev.map((item) => {
+          const base = baseIdioms.find((e) => e.id === item.example.id);
+          if (!base) return item;
+          return { ...item, example: transposeExample(base, transposeSemitones) };
+        });
+      });
+      return;
+    }
+
     setChain((prev) => {
       if (prev.length === 0) return prev;
       return prev.map((item) => {
@@ -262,12 +284,12 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         return { ...item, example: transposeExample(base, transposeSemitones) };
       });
     });
-  }, [baseIdioms, transposeSemitones]);
+  }, [baseIdioms, transposeSemitones, demoMode, idioms]);
 
   useEffect(() => {
     stopPlayback();
     setPlaying(false);
-  }, [lineNotes, bpm, swing, loopGapBeats, transposeSemitones]);
+  }, [lineNotes, bpm, swing, transposeSemitones]);
 
   const chainEnd =
     chain.length > 0 ? endPitchClass(chain[chain.length - 1].example) : null;
@@ -298,7 +320,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           <h1>Jazz Lines Player</h1>
           <p className="subtitle">
             {demoMode
-              ? 'Try II–V #1a and #2 — sign up to unlock all idioms'
+              ? 'II–V #1a and #2 are loaded as one line — sign up to unlock all idioms'
               : 'Build a full ii–V–I line across sections, or chain any idioms freely'}
           </p>
         </div>
@@ -340,26 +362,10 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
             onClick={() => setLineLoop((prev) => !prev)}
             disabled={chain.length === 0}
             aria-pressed={lineLoop}
-            title="Repeat your line until Stop"
+            title="Repeat your line until Stop (1/8-note pause between repeats)"
           >
             Loop
           </button>
-          <label
-            className={`bpm-control ${lineLoop ? '' : 'bpm-control--disabled'}`}
-            title="Pause between loop repetitions (in beats)"
-          >
-            Loop gap
-            <input
-              type="range"
-              min={0}
-              max={8}
-              step={0.5}
-              value={loopGapBeats}
-              onChange={(e) => setLoopGapBeats(Number(e.target.value))}
-              disabled={!lineLoop || chain.length === 0}
-            />
-            <span>{loopGapBeats}b</span>
-          </label>
           <button
             type="button"
             className="btn btn--ghost"

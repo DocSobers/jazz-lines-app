@@ -10,6 +10,9 @@ let scheduledIds: number[] = [];
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
 
+/** Fixed rest before each loop repeat (after the first play-through). */
+const LOOP_REPEAT_REST: Note = { rest: true, pitch: 'R', duration: '8n' };
+
 /** 0 = straight eighths, 1 = full triplet jazz swing */
 export type SwingAmount = number;
 
@@ -165,10 +168,11 @@ function schedulePass(
   player: GuitarPlayer,
   notes: Note[],
   bpm: number,
-  swing: SwingAmount
+  swing: SwingAmount,
+  tightStart = false
 ): number {
   const schedule = buildSchedule(notes, bpm, swing);
-  const start = Tone.now() + 0.15;
+  const start = Tone.now() + (tightStart ? 0.03 : 0.15);
 
   for (const note of schedule) {
     if (!note.rest) {
@@ -184,9 +188,16 @@ function schedulePass(
   return Math.max(0, (start + endTime - Tone.now()) * 1000);
 }
 
-function loopGapMs(bpm: number, loopGapBeats: number): number {
-  if (loopGapBeats <= 0) return 0;
-  return (loopGapBeats * 60_000) / bpm;
+function skipLeadingRests(notes: Note[]): Note[] {
+  let i = 0;
+  while (i < notes.length && notes[i].rest) {
+    i += 1;
+  }
+  return i === 0 ? notes : notes.slice(i);
+}
+
+function notesForLoopCycle(notes: Note[]): Note[] {
+  return [...notes, LOOP_REPEAT_REST];
 }
 
 export async function playNotes(
@@ -194,30 +205,32 @@ export async function playNotes(
   bpm: number,
   onComplete?: () => void,
   swing: SwingAmount = 1,
-  loop = false,
-  loopGapBeats = 0
+  loop = false
 ): Promise<void> {
   stopPlayback();
   loopActive = loop;
 
   const player = await ensureGuitar();
-  const gapMs = loop ? loopGapMs(bpm, loopGapBeats) : 0;
 
-  const runPass = () => {
+  const runPass = (isRepeat = false) => {
     guitar?.releaseAll();
-    const totalMs = schedulePass(player, notes, bpm, swing);
+    let cycleNotes = isRepeat ? skipLeadingRests(notes) : notes;
+    if (loop) {
+      cycleNotes = notesForLoopCycle(cycleNotes);
+    }
+    const totalMs = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
     const id = window.setTimeout(() => {
       scheduledIds = scheduledIds.filter((scheduledId) => scheduledId !== id);
       if (loopActive) {
-        runPass();
+        runPass(true);
       } else {
         onComplete?.();
       }
-    }, totalMs + gapMs);
+    }, totalMs);
     scheduledIds.push(id);
   };
 
-  runPass();
+  runPass(false);
 }
 
 export function stopPlayback(): void {

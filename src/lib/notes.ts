@@ -112,8 +112,15 @@ export function transposeNotes(notes: Note[], octaveOffset: number): Note[] {
   });
 }
 
-function joinOctaveOffset(flattenedSoFar: Note[], next: Example): number {
-  const prevEnd = soundingNotes(flattenedSoFar).at(-1);
+function joinOctaveOffset(
+  flattenedSoFar: Note[],
+  next: Example,
+  boundaryEnd?: Note
+): number {
+  const prevEnd =
+    boundaryEnd && !boundaryEnd.rest
+      ? boundaryEnd
+      : soundingNotes(flattenedSoFar).at(-1);
   const nextStart = soundingNotes(next.notes)[0];
   if (!prevEnd || !nextStart) return 0;
   return pitchOctave(prevEnd.pitch) - pitchOctave(nextStart.pitch);
@@ -148,14 +155,18 @@ export function flattenChain(items: ChainItem[]): Note[] {
       pitchClass(prevSounding[prevSounding.length - 1].pitch) ===
       pitchClass(currSounding[0].pitch);
 
+    let boundaryNote: Note | undefined;
     if (sharesBoundary && result.length > 0) {
-      result.pop();
+      boundaryNote = result.pop();
     }
 
     const notesToAdd =
       curr.octave !== 0
         ? transposeNotes(curr.example.notes, curr.octave)
-        : transposeNotes(curr.example.notes, joinOctaveOffset(result, curr.example));
+        : transposeNotes(
+            curr.example.notes,
+            joinOctaveOffset(result, curr.example, boundaryNote)
+          );
 
     result.push(...notesToAdd);
   }
