@@ -34,11 +34,6 @@ function pairFillsQuarter(a: Note, b: Note, bpm: number, quarter: number): boole
   return Math.abs(sum - quarter) < 0.001;
 }
 
-/** Long-note fraction of a quarter when pairing two eighths (0.5 straight → 2/3 swung). */
-function swingLongFraction(swing: SwingAmount): number {
-  return 0.5 + swing * (2 / 3 - 0.5);
-}
-
 interface ScheduledNote {
   pitch: string;
   rest?: boolean;
@@ -61,19 +56,22 @@ function buildSchedule(
     const next = notes[i + 1];
 
     if (swing > 0 && next && pairFillsQuarter(current, next, bpm, quarter)) {
-      const longFrac = swingLongFraction(swing);
-      const shortFrac = 1 - longFrac;
+      const written1 = noteSeconds(current.duration, bpm) / quarter;
+      const written2 = noteSeconds(next.duration, bpm) / quarter;
+      // Interpolate each note's beat fraction: straight 50/50 → written (e.g. short pickup + long downbeat)
+      const frac1 = 0.5 + swing * (written1 - 0.5);
+      const frac2 = 0.5 + swing * (written2 - 0.5);
       scheduled.push({
         pitch: current.pitch,
         rest: current.rest,
         time,
-        duration: longFrac * quarter,
+        duration: frac1 * quarter,
       });
       scheduled.push({
         pitch: next.pitch,
         rest: next.rest,
-        time: time + longFrac * quarter,
-        duration: shortFrac * quarter,
+        time: time + frac1 * quarter,
+        duration: frac2 * quarter,
       });
       time += quarter;
       i += 2;

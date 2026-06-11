@@ -130,14 +130,17 @@ def main() -> None:
     total = 0
 
     for section, rows in workbook:
-        for pattern, filename, _start, phrase, _chords in rows:
+        for pattern, filename, start_time, phrase, _chords in rows:
             num = pattern.lstrip('#')
             ex_id = filename.replace('#', 'n')
+            pickup = float(start_time) if start_time else 0.0
             lines.append('  {')
             lines.append(f"    id: '{ex_id}',")
             lines.append(f"    section: '{section}',")
             lines.append(f"    number: '{num}',")
             lines.append(f"    label: '{section} {pattern}',")
+            if pickup > 0:
+                lines.append(f'    pickupBeat: {pickup},')
             lines.append('    notes: [')
             for rest, pitch, duration in parse_phrase(phrase):
                 lines.append(fmt_note(rest, pitch, duration))

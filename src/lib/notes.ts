@@ -49,11 +49,20 @@ function joinOctaveOffset(flattenedSoFar: Note[], next: Example): number {
   return pitchOctave(prevEnd.pitch) - pitchOctave(nextStart.pitch);
 }
 
+/** Leading rest so a pickup lands on the correct beat (e.g. "and" of 4). */
+export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
+  if (!pickupBeat || pickupBeat <= 0) return notes;
+  return [
+    { rest: true, pitch: 'R', duration: `4n * ${pickupBeat}` },
+    ...notes,
+  ];
+}
+
 /** Merge examples; at each join drop the previous phrase's ending note so the shared pitch plays once (from the next phrase). */
 export function flattenChain(examples: Example[]): Note[] {
   if (examples.length === 0) return [];
 
-  const result: Note[] = [...examples[0].notes];
+  const result: Note[] = [...prependPickup(examples[0].notes, examples[0].pickupBeat)];
 
   for (let i = 1; i < examples.length; i++) {
     const prev = examples[i - 1];

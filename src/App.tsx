@@ -5,6 +5,7 @@ import {
   endPitchClass,
   flattenChain,
   formatPitchClass,
+  prependPickup,
   startPitchClass,
 } from './lib/notes';
 import { disposePlayback, playNotes, stopPlayback } from './lib/playback';
@@ -94,7 +95,7 @@ export default function App() {
   );
 
   const handlePlayExample = (example: Example) => {
-    void play(example.notes);
+    void play(prependPickup(example.notes, example.pickupBeat));
   };
 
   const handlePlayChain = () => {

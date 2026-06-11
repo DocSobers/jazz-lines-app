@@ -15,6 +15,8 @@ export interface Example {
   number: string;
   label: string;
   notes: Note[];
+  /** Quarter-note beat offset before first note (pickup on "and" of 4, etc.) */
+  pickupBeat?: number;
 }
 
 export interface JoinedLine {

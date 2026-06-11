@@ -20,6 +20,7 @@ export const JAZZ_IDIOMS: Example[] = [
     section: 'II-V',
     number: '1a',
     label: 'II-V #1a',
+    pickupBeat: 3.67,
     notes: [
       { pitch: 'C#4', duration: '8t' },
       { pitch: 'D4', duration: '4t' },
@@ -36,6 +37,7 @@ export const JAZZ_IDIOMS: Example[] = [
     section: 'II-V',
     number: '1b',
     label: 'II-V #1b',
+    pickupBeat: 3.67,
     notes: [
       { pitch: 'C#4', duration: '8t' },
       { pitch: 'D4', duration: '8t' },
@@ -66,6 +68,7 @@ export const JAZZ_IDIOMS: Example[] = [
     section: 'II-V',
     number: '3',
     label: 'II-V #3',
+    pickupBeat: 3.67,
     notes: [
       { pitch: 'A4', duration: '8t' },
       { pitch: 'D5', duration: '4t' },
