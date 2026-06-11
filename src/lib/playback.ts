@@ -8,6 +8,7 @@ let guitar: GuitarPlayer | null = null;
 let guitarReady: Promise<GuitarPlayer> | null = null;
 let scheduledIds: number[] = [];
 let onInterrupted: (() => void) | null = null;
+let loopActive = false;
 
 /** 0 = straight eighths, 1 = full triplet jazz swing */
 export type SwingAmount = number;
@@ -42,6 +43,11 @@ function loadGuitar(): Promise<GuitarPlayer> {
 async function ensureGuitar(): Promise<GuitarPlayer> {
   await ensureAudioReady();
   return loadGuitar();
+}
+
+/** Load guitar samples early (e.g. on /app mount) to reduce first-play latency. */
+export function preloadGuitar(): void {
+  void loadGuitar();
 }
 
 /** Safari suspends audio when the tab is hidden; resume and reset on return. */
@@ -155,14 +161,12 @@ function buildSchedule(
   return scheduled;
 }
 
-export async function playNotes(
+function schedulePass(
+  player: GuitarPlayer,
   notes: Note[],
   bpm: number,
-  onComplete?: () => void,
-  swing: SwingAmount = 1
-): Promise<void> {
-  stopPlayback();
-  const player = await ensureGuitar();
+  swing: SwingAmount
+): number {
   const schedule = buildSchedule(notes, bpm, swing);
   const start = Tone.now() + 0.15;
 
@@ -176,12 +180,48 @@ export async function playNotes(
     (max, note) => Math.max(max, note.time + note.duration),
     0
   );
-  const totalMs = (start + endTime - Tone.now()) * 1000;
-  const id = window.setTimeout(() => onComplete?.(), totalMs);
-  scheduledIds.push(id);
+
+  return Math.max(0, (start + endTime - Tone.now()) * 1000);
+}
+
+function loopGapMs(bpm: number, loopGapBeats: number): number {
+  if (loopGapBeats <= 0) return 0;
+  return (loopGapBeats * 60_000) / bpm;
+}
+
+export async function playNotes(
+  notes: Note[],
+  bpm: number,
+  onComplete?: () => void,
+  swing: SwingAmount = 1,
+  loop = false,
+  loopGapBeats = 0
+): Promise<void> {
+  stopPlayback();
+  loopActive = loop;
+
+  const player = await ensureGuitar();
+  const gapMs = loop ? loopGapMs(bpm, loopGapBeats) : 0;
+
+  const runPass = () => {
+    guitar?.releaseAll();
+    const totalMs = schedulePass(player, notes, bpm, swing);
+    const id = window.setTimeout(() => {
+      scheduledIds = scheduledIds.filter((scheduledId) => scheduledId !== id);
+      if (loopActive) {
+        runPass();
+      } else {
+        onComplete?.();
+      }
+    }, totalMs + gapMs);
+    scheduledIds.push(id);
+  };
+
+  runPass();
 }
 
 export function stopPlayback(): void {
+  loopActive = false;
   scheduledIds.forEach((id) => window.clearTimeout(id));
   scheduledIds = [];
   guitar?.releaseAll();

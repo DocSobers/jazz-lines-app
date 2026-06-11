@@ -1,28 +1,5 @@
-:root {
-  --bg: #0f1419;
-  --surface: #1a222d;
-  --surface-2: #243040;
-  --border: #2f3d52;
-  --text: #e8edf4;
-  --muted: #8fa3bf;
-  --accent: #e8a838;
-  --accent-dim: #b8842a;
-  --join: #5cb88a;
-  --radius: 12px;
-  --font: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
-  --font-ui: system-ui, -apple-system, sans-serif;
-}
-
 * {
   box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
-  line-height: 1.5;
 }
 
 .app {
@@ -50,6 +27,18 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
+}
+
+.navbar__brand-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar__player {
+  font-size: 0.85rem;
 }
 
 .navbar__title {
@@ -119,6 +108,84 @@ h1 {
   max-width: 36rem;
 }
 
+.key-wheel-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.key-wheel-wrap__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.key-wheel {
+  position: relative;
+  width: 9.5rem;
+  height: 9.5rem;
+}
+
+.key-wheel__center {
+  position: absolute;
+  inset: 2.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.key-wheel__center-label {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.key-wheel__center-hint {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.key-wheel__key {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2rem;
+  height: 2rem;
+  margin: -1rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  cursor: pointer;
+  transform: rotate(var(--angle)) translateY(-3.65rem) rotate(calc(-1 * var(--angle)));
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.key-wheel__key:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.key-wheel__key--selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 .transport {
   display: flex;
   flex-wrap: wrap;
@@ -143,6 +210,10 @@ h1 {
   min-width: 2.5rem;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.bpm-control--disabled {
+  opacity: 0.45;
 }
 
 .btn {
@@ -179,6 +250,12 @@ h1 {
 
 .btn--ghost:hover:not(:disabled) {
   background: var(--surface-2);
+}
+
+.btn--toggle-on {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: rgba(232, 168, 56, 0.12);
 }
 
 .chain-panel {

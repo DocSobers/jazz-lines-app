@@ -1,0 +1,433 @@
+.landing {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 168, 56, 0.14), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(92, 184, 138, 0.08), transparent),
+    var(--bg);
+}
+
+.landing__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(26, 34, 45, 0.85);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.landing__nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.landing__nav-link {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: var(--muted);
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.landing__nav-link:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.landing__nav-link--active {
+  color: var(--accent);
+}
+
+.landing__nav-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.landing__nav-title {
+  font-family: var(--font);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.landing__nav-tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.landing__nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.landing__hero {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 1rem;
+  text-align: center;
+}
+
+.jazz-instruments {
+  margin-bottom: 1.5rem;
+}
+
+.jazz-instruments__svg {
+  width: 100%;
+  max-width: 960px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.jazz-instruments__piano,
+.jazz-instruments__bass,
+.jazz-instruments__guitar,
+.jazz-instruments__sax,
+.jazz-instruments__trumpet {
+  transform-origin: center bottom;
+  animation: instrument-float 5s ease-in-out infinite;
+}
+
+.jazz-instruments__bass {
+  animation-delay: 0.4s;
+}
+
+.jazz-instruments__guitar {
+  animation-delay: 0.8s;
+}
+
+.jazz-instruments__sax {
+  animation-delay: 1.2s;
+}
+
+.jazz-instruments__trumpet {
+  animation-delay: 1.6s;
+}
+
+@keyframes instrument-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.jazz-instruments__labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.landing__eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.landing__title {
+  margin: 0 0 1rem;
+  font-family: var(--font);
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.landing__lede {
+  margin: 0 auto 1.5rem;
+  max-width: 52rem;
+  font-family: var(--font);
+  font-size: clamp(1.15rem, 2.5vw, 1.45rem);
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.landing__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 3rem;
+}
+
+.landing__cta-primary {
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.landing__body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+}
+
+.landing__section {
+  margin-bottom: 2.5rem;
+}
+
+.landing__section h2 {
+  margin: 0 0 1rem;
+  font-family: var(--font);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.landing__section p {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.landing__features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.landing__feature {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.landing__feature h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.landing__feature p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.landing__footer {
+  text-align: center;
+  padding: 2rem 1.5rem 3rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.site-footer__copy {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.site-footer > :not(.site-footer__copy):last-child {
+  margin-bottom: 0;
+}
+
+.about {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 2rem;
+}
+
+.about--bio {
+  max-width: 960px;
+}
+
+.about__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 560px) {
+  .about__header {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 2rem;
+  }
+}
+
+.about__photo {
+  width: min(240px, 70vw);
+  height: auto;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(232, 168, 56, 0.15);
+}
+
+.about__intro {
+  flex: 1;
+  min-width: 0;
+}
+
+.about__title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.about__role {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.about__header--solo {
+  display: block;
+  text-align: center;
+}
+
+.about__subtitle {
+  margin: 0.75rem auto 0;
+  max-width: 28rem;
+  font-size: 1.1rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.about__body {
+  margin-bottom: 2.5rem;
+}
+
+.about__paragraph {
+  margin: 0 0 1.15rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.about__paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.about__app {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.about__app h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font);
+  font-size: 1.35rem;
+  color: var(--accent);
+}
+
+.about__app p {
+  margin: 0 0 1.25rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.about__app--solo {
+  max-width: none;
+}
+
+.about__app--solo p:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+.about__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.about__crosslink {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.about__crosslink a {
+  color: var(--accent);
+}
+
+.landing__footer-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.landing__footer-link:hover {
+  text-decoration: underline;
+}
+
+.auth-gate {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 3rem;
+  text-align: center;
+}
+
+.auth-gate__title {
+  margin: 0 0 1rem;
+  font-family: var(--font);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.auth-gate__lede {
+  margin: 0 0 1.75rem;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.auth-gate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.auth-gate__back {
+  font-size: 0.95rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.auth-gate__back:hover {
+  text-decoration: underline;
+}

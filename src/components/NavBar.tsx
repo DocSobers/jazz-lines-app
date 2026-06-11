@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   SignInButton,
   SignUpButton,
@@ -37,11 +38,22 @@ export default function NavBar({ edits, clerkEnabled, isAdmin }: NavBarProps) {
   return (
     <nav className="navbar">
       <div className="navbar__brand">
-        <span className="navbar__title">Jazz Lines</span>
-        <span className="navbar__tag">ii–V–I</span>
+        <Link to="/" className="navbar__brand-link">
+          <span className="navbar__title">Jazz Lines</span>
+          <span className="navbar__tag">ii–V–I</span>
+        </Link>
       </div>
 
       <div className="navbar__actions">
+        <Link to="/about" className="btn btn--ghost navbar__player">
+          About
+        </Link>
+        <Link to="/bio" className="btn btn--ghost navbar__player">
+          Bio
+        </Link>
+        <Link to="/app" className="btn btn--ghost navbar__player">
+          Player
+        </Link>
         {exportError && <span className="navbar__error">{exportError}</span>}
 
         {isAdmin && (

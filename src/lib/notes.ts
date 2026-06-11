@@ -1,5 +1,40 @@
 import type { ChainItem, Example, Note } from '../types';
 
+const PITCH_CLASS_SEMITONE: Record<string, number> = {
+  C: 0,
+  'C#': 1,
+  Db: 1,
+  D: 2,
+  'D#': 3,
+  Eb: 3,
+  E: 4,
+  F: 5,
+  'F#': 6,
+  Gb: 6,
+  G: 7,
+  'G#': 8,
+  Ab: 8,
+  A: 9,
+  'A#': 10,
+  Bb: 10,
+  B: 11,
+};
+
+const SEMITONE_PITCH_CLASS = [
+  'C',
+  'C#',
+  'D',
+  'D#',
+  'E',
+  'F',
+  'F#',
+  'G',
+  'G#',
+  'A',
+  'A#',
+  'B',
+] as const;
+
 /** Strip octave to get pitch class, e.g. "G4" -> "G", "Bb3" -> "Bb" */
 export function pitchClass(pitch: string): string {
   return pitch.replace(/-?\d+$/, '');
@@ -27,6 +62,41 @@ function pitchOctave(pitch: string): number {
   const match = pitch.match(/(\d+)$/);
   if (!match) throw new Error(`Invalid pitch: ${pitch}`);
   return Number(match[1]);
+}
+
+function pitchToMidi(pitch: string): number {
+  const pc = pitchClass(pitch);
+  const semitone = PITCH_CLASS_SEMITONE[pc];
+  if (semitone === undefined) throw new Error(`Unknown pitch class: ${pc}`);
+  return (pitchOctave(pitch) + 1) * 12 + semitone;
+}
+
+function midiToPitch(midi: number): string {
+  const octave = Math.floor(midi / 12) - 1;
+  const semitone = ((midi % 12) + 12) % 12;
+  return `${SEMITONE_PITCH_CLASS[semitone]}${octave}`;
+}
+
+export function transposePitch(pitch: string, semitones: number): string {
+  if (semitones === 0) return pitch;
+  return midiToPitch(pitchToMidi(pitch) + semitones);
+}
+
+/** Shift all notes by semitones (chromatic transposition). */
+export function transposeNotesBySemitones(notes: Note[], semitones: number): Note[] {
+  if (semitones === 0) return notes;
+  return notes.map((note) => {
+    if (note.rest) return note;
+    return { ...note, pitch: transposePitch(note.pitch, semitones) };
+  });
+}
+
+export function transposeExample(example: Example, semitones: number): Example {
+  if (semitones === 0) return example;
+  return {
+    ...example,
+    notes: transposeNotesBySemitones(example.notes, semitones),
+  };
 }
 
 /** Shift all notes by whole octaves so the next phrase continues in the previous ending octave. */
