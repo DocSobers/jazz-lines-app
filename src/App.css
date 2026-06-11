@@ -151,7 +151,39 @@ h1 {
 
 .chain-panel__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
+}
+
+.octave-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.octave-control--inline {
+  margin-left: auto;
+}
+
+.octave-control__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.octave-control__value {
+  min-width: 1.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.btn--icon {
+  min-width: 2rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .empty-state {
@@ -171,11 +203,16 @@ h1 {
 .chain-list li {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem 0.75rem;
   padding: 0.6rem 0.75rem;
   background: var(--surface-2);
   border-radius: 8px;
+}
+
+.chain-list__label {
+  flex: 1;
+  min-width: 8rem;
 }
 
 .chain-list__index {

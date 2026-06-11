@@ -8,8 +8,16 @@ import {
   prependPickup,
   startPitchClass,
 } from './lib/notes';
-import { disposePlayback, playNotes, stopPlayback } from './lib/playback';
-import type { Example } from './types';
+import {
+  disposePlayback,
+  initPlaybackLifecycle,
+  playNotes,
+  stopPlayback,
+} from './lib/playback';
+import type { ChainItem, Example } from './types';
+
+const OCTAVE_MIN = -3;
+const OCTAVE_MAX = 3;
 import './App.css';
 
 const SECTION_LABELS: Record<(typeof IDIOM_SECTIONS)[number], string> = {
@@ -69,14 +77,16 @@ function ExampleCard({
 }
 
 export default function App() {
-  const [chain, setChain] = useState<Example[]>([]);
+  const [chain, setChain] = useState<ChainItem[]>([]);
   const [bpm, setBpm] = useState(120);
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
 
+  const chainExamples = useMemo(() => chain.map((item) => item.example), [chain]);
+
   const compatible = useMemo(
-    () => findCompatibleNext(chain, JAZZ_IDIOMS),
-    [chain]
+    () => findCompatibleNext(chainExamples, JAZZ_IDIOMS),
+    [chainExamples]
   );
 
   const compatibleIds = useMemo(
@@ -84,7 +94,7 @@ export default function App() {
     [compatible]
   );
 
-  const flattened = useMemo(() => flattenChain(chain), [chain]);
+  const lineNotes = useMemo(() => flattenChain(chain), [chain]);
 
   const play = useCallback(
     async (notes: Example['notes']) => {
@@ -99,13 +109,13 @@ export default function App() {
   };
 
   const handlePlayChain = () => {
-    if (flattened.length === 0) return;
-    void play(flattened);
+    if (lineNotes.length === 0) return;
+    void play(lineNotes);
   };
 
   const handleAdd = (example: Example) => {
-    if (chain.some((e) => e.id === example.id)) return;
-    setChain((prev) => [...prev, example]);
+    if (chain.some((item) => item.example.id === example.id)) return;
+    setChain((prev) => [...prev, { example, octave: 0 }]);
   };
 
   const handleRemoveLast = () => {
@@ -118,21 +128,43 @@ export default function App() {
     setChain([]);
   };
 
-  useEffect(() => () => disposePlayback(), []);
+  const adjustItemOctave = (index: number, delta: number) => {
+    setChain((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              octave: Math.min(OCTAVE_MAX, Math.max(OCTAVE_MIN, item.octave + delta)),
+            }
+          : item
+      )
+    );
+  };
+
+  useEffect(() => {
+    const endLifecycle = initPlaybackLifecycle(() => setPlaying(false));
+    return () => {
+      endLifecycle();
+      disposePlayback();
+    };
+  }, []);
 
   const chainEnd =
-    chain.length > 0 ? endPitchClass(chain[chain.length - 1]) : null;
+    chain.length > 0 ? endPitchClass(chain[chain.length - 1].example) : null;
 
   const nextProgressionSection = useMemo(() => {
     if (chain.length === 0) return PROGRESSION[0];
-    const lastSection = chain[chain.length - 1].section;
+    const lastSection = chain[chain.length - 1].example.section;
     const idx = PROGRESSION.indexOf(lastSection as (typeof PROGRESSION)[number]);
     if (idx === -1 || idx >= PROGRESSION.length - 1) return null;
     return PROGRESSION[idx + 1];
   }, [chain]);
 
   const hasFullProgression = useMemo(
-    () => PROGRESSION.every((section) => chain.some((e) => e.section === section)),
+    () =>
+      PROGRESSION.every((section) =>
+        chain.some((item) => item.example.section === section)
+      ),
     [chain]
   );
 
@@ -214,13 +246,36 @@ export default function App() {
         ) : (
           <>
             <ol className="chain-list">
-              {chain.map((ex, i) => (
-                <li key={`${ex.id}-${i}`}>
+              {chain.map((item, i) => (
+                <li key={`${item.example.id}-${i}`}>
                   <span className="chain-list__index">{i + 1}</span>
-                  <span>{ex.label}</span>
+                  <span className="chain-list__label">{item.example.label}</span>
+                  <div className="octave-control octave-control--inline" aria-label="Octave">
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--icon"
+                      onClick={() => adjustItemOctave(i, -1)}
+                      disabled={item.octave <= OCTAVE_MIN}
+                      aria-label={`Lower ${item.example.label} one octave`}
+                    >
+                      −
+                    </button>
+                    <span className="octave-control__value">
+                      {item.octave > 0 ? `+${item.octave}` : item.octave}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--icon"
+                      onClick={() => adjustItemOctave(i, 1)}
+                      disabled={item.octave >= OCTAVE_MAX}
+                      aria-label={`Raise ${item.example.label} one octave`}
+                    >
+                      +
+                    </button>
+                  </div>
                   {i < chain.length - 1 && (
                     <span className="chain-list__join">
-                      ↳ {formatPitchClass(endPitchClass(ex))}
+                      ↳ {formatPitchClass(endPitchClass(item.example))}
                     </span>
                   )}
                 </li>
@@ -286,7 +341,7 @@ export default function App() {
             )}
             <div className="example-grid">
               {sectionExamples.map((example) => {
-                const inChain = chain.some((e) => e.id === example.id);
+                const inChain = chain.some((item) => item.example.id === example.id);
                 const matchesNext =
                   chain.length > 0 && compatibleIds.has(example.id);
 

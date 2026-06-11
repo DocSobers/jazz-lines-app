@@ -19,6 +19,12 @@ export interface Example {
   pickupBeat?: number;
 }
 
+export interface ChainItem {
+  example: Example;
+  /** Whole-octave shift applied to this idiom in the line */
+  octave: number;
+}
+
 export interface JoinedLine {
   examples: Example[];
   /** Flattened notes with boundary duplicates removed */

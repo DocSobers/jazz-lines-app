@@ -1,4 +1,4 @@
-import type { Example, Note } from '../types';
+import type { ChainItem, Example, Note } from '../types';
 
 /** Strip octave to get pitch class, e.g. "G4" -> "G", "Bb3" -> "Bb" */
 export function pitchClass(pitch: string): string {
@@ -58,17 +58,22 @@ export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
   ];
 }
 
-/** Merge examples; at each join drop the previous phrase's ending note so the shared pitch plays once (from the next phrase). */
-export function flattenChain(examples: Example[]): Note[] {
-  if (examples.length === 0) return [];
+/** Merge chain items; per-item octave overrides auto-alignment for that idiom. */
+export function flattenChain(items: ChainItem[]): Note[] {
+  if (items.length === 0) return [];
 
-  const result: Note[] = [...prependPickup(examples[0].notes, examples[0].pickupBeat)];
+  const first = items[0];
+  const result: Note[] = [
+    ...transposeNotes(
+      prependPickup(first.example.notes, first.example.pickupBeat),
+      first.octave
+    ),
+  ];
 
-  for (let i = 1; i < examples.length; i++) {
-    const prev = examples[i - 1];
-    const curr = examples[i];
-    const prevSounding = soundingNotes(prev.notes);
-    const currSounding = soundingNotes(curr.notes);
+  for (let i = 1; i < items.length; i++) {
+    const curr = items[i];
+    const prevSounding = soundingNotes(items[i - 1].example.notes);
+    const currSounding = soundingNotes(curr.example.notes);
     const sharesBoundary =
       pitchClass(prevSounding[prevSounding.length - 1].pitch) ===
       pitchClass(currSounding[0].pitch);
@@ -77,8 +82,12 @@ export function flattenChain(examples: Example[]): Note[] {
       result.pop();
     }
 
-    const octaveOffset = joinOctaveOffset(result, curr);
-    result.push(...transposeNotes(curr.notes, octaveOffset));
+    const notesToAdd =
+      curr.octave !== 0
+        ? transposeNotes(curr.example.notes, curr.octave)
+        : transposeNotes(curr.example.notes, joinOctaveOffset(result, curr.example));
+
+    result.push(...notesToAdd);
   }
 
   return result;

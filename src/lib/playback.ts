@@ -1,22 +1,88 @@
 import * as Tone from 'tone';
+import GuitarNylonMp3 from 'tonejs-instrument-guitar-nylon-mp3';
 import type { Note } from '../types';
 
-let synth: Tone.PolySynth | null = null;
+type GuitarPlayer = GuitarNylonMp3;
+
+let guitar: GuitarPlayer | null = null;
+let guitarReady: Promise<GuitarPlayer> | null = null;
 let scheduledIds: number[] = [];
+let onInterrupted: (() => void) | null = null;
 
 /** 0 = straight eighths, 1 = full triplet jazz swing */
 export type SwingAmount = number;
 
-async function ensureSynth(): Promise<Tone.PolySynth> {
+async function ensureAudioReady(): Promise<void> {
   await Tone.start();
-  if (!synth) {
-    synth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.005, decay: 0.2, sustain: 0.15, release: 0.4 },
-    }).toDestination();
-    synth.volume.value = -6;
+  const ctx = Tone.getContext();
+  if (ctx.state !== 'running') {
+    await ctx.resume();
   }
-  return synth;
+}
+
+function loadGuitar(): Promise<GuitarPlayer> {
+  if (guitar?.loaded) {
+    return Promise.resolve(guitar);
+  }
+
+  if (!guitarReady) {
+    guitarReady = new Promise((resolve) => {
+      const instrument = new GuitarNylonMp3({
+        onload: () => {
+          instrument.volume.value = -2;
+          guitar = instrument;
+          resolve(instrument);
+        },
+      });
+      instrument.toDestination();
+    });
+  }
+
+  return guitarReady;
+}
+
+async function ensureGuitar(): Promise<GuitarPlayer> {
+  await ensureAudioReady();
+  return loadGuitar();
+}
+
+/** Safari suspends audio when the tab is hidden; resume and reset on return. */
+export function initPlaybackLifecycle(interrupted: () => void): () => void {
+  onInterrupted = interrupted;
+
+  const handleReturn = () => {
+    void ensureAudioReady();
+    stopPlayback();
+    interrupted();
+  };
+
+  const handleLeave = () => {
+    stopPlayback();
+    interrupted();
+  };
+
+  const onVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      handleReturn();
+    } else {
+      handleLeave();
+    }
+  };
+
+  const onPageShow = () => {
+    handleReturn();
+  };
+
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pageshow', onPageShow);
+
+  return () => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pageshow', onPageShow);
+    if (onInterrupted === interrupted) {
+      onInterrupted = null;
+    }
+  };
 }
 
 function quarterSeconds(bpm: number): number {
@@ -58,7 +124,6 @@ function buildSchedule(
     if (swing > 0 && next && pairFillsQuarter(current, next, bpm, quarter)) {
       const written1 = noteSeconds(current.duration, bpm) / quarter;
       const written2 = noteSeconds(next.duration, bpm) / quarter;
-      // Interpolate each note's beat fraction: straight 50/50 → written (e.g. short pickup + long downbeat)
       const frac1 = 0.5 + swing * (written1 - 0.5);
       const frac2 = 0.5 + swing * (written2 - 0.5);
       scheduled.push({
@@ -99,9 +164,9 @@ export async function playNotes(
   swing: SwingAmount = 1
 ): Promise<void> {
   stopPlayback();
-  const player = await ensureSynth();
+  const player = await ensureGuitar();
   const schedule = buildSchedule(notes, bpm, swing);
-  const start = Tone.now() + 0.1;
+  const start = Tone.now() + 0.15;
 
   for (const note of schedule) {
     if (!note.rest) {
@@ -121,12 +186,15 @@ export async function playNotes(
 export function stopPlayback(): void {
   scheduledIds.forEach((id) => window.clearTimeout(id));
   scheduledIds = [];
-  synth?.releaseAll();
+  guitar?.releaseAll();
   Tone.getTransport().stop();
+  Tone.getTransport().cancel();
 }
 
 export function disposePlayback(): void {
   stopPlayback();
-  synth?.dispose();
-  synth = null;
+  guitar?.dispose();
+  guitar = null;
+  guitarReady = null;
+  onInterrupted = null;
 }
