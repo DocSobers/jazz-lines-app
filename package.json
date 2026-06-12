@@ -6,15 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "serve -s dist -l $PORT",
+    "heroku-postbuild": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
     "import-idioms": "python3 scripts/import-jazz-idioms.py"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.8",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
+    "serve": "^14.2.4",
     "tone": "^15.1.22",
     "tonejs-instrument-flute-mp3": "^1.1.2",
     "tonejs-instrument-guitar-nylon-mp3": "^1.1.1",
