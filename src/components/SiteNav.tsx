@@ -7,6 +7,7 @@ import {
   UserButton,
 } from '@clerk/clerk-react';
 import '../pages/LandingPage.css';
+import ThemePicker from './ThemePicker';
 
 interface SiteNavProps {
   clerkEnabled: boolean;
@@ -44,6 +45,7 @@ export default function SiteNav({ clerkEnabled }: SiteNavProps) {
       </nav>
 
       <div className="landing__nav-actions">
+        <ThemePicker />
         {clerkEnabled ? (
           <>
             <SignedOut>

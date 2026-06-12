@@ -10,6 +10,7 @@ import {
 import { JAZZ_IDIOMS } from '../data/jazz-idioms';
 import type { ExampleEdits } from '../lib/example-edits';
 import { exportEditsToXlsx } from '../lib/export-xlsx';
+import ThemePicker from './ThemePicker';
 
 interface NavBarProps {
   edits: ExampleEdits;
@@ -45,6 +46,7 @@ export default function NavBar({ edits, clerkEnabled, isAdmin }: NavBarProps) {
       </div>
 
       <div className="navbar__actions">
+        <ThemePicker />
         <Link to="/about" className="btn btn--ghost navbar__player">
           About
         </Link>

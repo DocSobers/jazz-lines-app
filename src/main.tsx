@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import './index.css';
 import App from './App.tsx';
+import { initTheme } from './lib/theme-prefs';
+
+initTheme();
 
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 

@@ -1,8 +1,8 @@
 /** Default concert key shown on the key wheel */
 export const REFERENCE_KEY = 'C';
 
-/** Idioms in jazz_idoms.xlsx are written in this key */
-const SOURCE_KEY: WheelKey = 'B';
+/** Pitches in jazz_idoms.xlsx are written at concert / reference key C */
+const SOURCE_KEY: WheelKey = 'C';
 
 export const WHEEL_KEYS = [
   'C',

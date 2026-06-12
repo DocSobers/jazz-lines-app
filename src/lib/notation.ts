@@ -1,4 +1,5 @@
 import {
+  Accidental,
   Beam,
   Formatter,
   Renderer,
@@ -24,20 +25,25 @@ const MEASURE_BEATS = 4;
 const STAVE_WIDTH = 260;
 const STAVE_X = 16;
 const STAVE_Y = 48;
-/** Matches `--text` in dark mode */
-const STAFF_INK = '#e8edf4';
+function staffInkColor(): string {
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue('--text').trim() ||
+    '#e8edf4'
+  );
+}
 
-const staffInkStyle = {
-  fillStyle: STAFF_INK,
-  strokeStyle: STAFF_INK,
-};
+function staffInkStyle() {
+  const ink = staffInkColor();
+  return { fillStyle: ink, strokeStyle: ink };
+}
 
 function applyInkToTickables(tickables: StaveNote[]): void {
+  const ink = staffInkStyle();
   tickables.forEach((tickable) => {
-    tickable.setStyle(staffInkStyle);
-    tickable.setStemStyle(staffInkStyle);
-    tickable.setFlagStyle(staffInkStyle);
-    tickable.setLedgerLineStyle(staffInkStyle);
+    tickable.setStyle(ink);
+    tickable.setStemStyle(ink);
+    tickable.setFlagStyle(ink);
+    tickable.setLedgerLineStyle(ink);
   });
 }
 
@@ -50,10 +56,22 @@ function durationToBeats(duration: string): number {
   return 1;
 }
 
+function parsePitch(pitch: string): { letter: string; accidental: string; octave: string } | null {
+  const match = pitch.match(/^([A-G])(#|b)?(-?\d+)$/);
+  if (!match) return null;
+  return { letter: match[1], accidental: match[2] ?? '', octave: match[3] };
+}
+
 function pitchToVexKey(pitch: string): string {
-  const match = pitch.match(/^([A-G](?:#|b)?)(-?\d+)$/);
-  if (!match) return 'c/4';
-  return `${match[1]}/${match[2]}`;
+  const parsed = parsePitch(pitch);
+  if (!parsed) return 'c/4';
+  return `${parsed.letter}${parsed.accidental}/${parsed.octave}`;
+}
+
+function addAccidental(staveNote: StaveNote, pitch: string): void {
+  const parsed = parsePitch(pitch);
+  if (!parsed?.accidental) return;
+  staveNote.addModifier(new Accidental(parsed.accidental));
 }
 
 type RestChunk = {
@@ -127,13 +145,13 @@ function noteToStaveNotes(note: Note): StaveNote[] {
     return [createRestNote(mapDurationToVex(note.duration))];
   }
 
-  return [
-    new StaveNote({
-      keys: [pitchToVexKey(note.pitch)],
-      duration: mapDurationToVex(note.duration),
-      autoStem: true,
-    }),
-  ];
+  const staveNote = new StaveNote({
+    keys: [pitchToVexKey(note.pitch)],
+    duration: mapDurationToVex(note.duration),
+    autoStem: true,
+  });
+  addAccidental(staveNote, note.pitch);
+  return [staveNote];
 }
 
 /** Notes that complete the pickup/anacrusis measure (actual beat time). */
@@ -223,8 +241,9 @@ export function renderExampleStaff(container: HTMLDivElement, example: Example):
   const renderer = new Renderer(container, Renderer.Backends.SVG);
   renderer.resize(width, height);
   const context = renderer.getContext();
-  context.setFillStyle(STAFF_INK);
-  context.setStrokeStyle(STAFF_INK);
+  const ink = staffInkColor();
+  context.setFillStyle(ink);
+  context.setStrokeStyle(ink);
 
   measures.forEach((measureNotes, index) => {
     const tickables = measureToTickables(measureNotes);
@@ -233,7 +252,7 @@ export function renderExampleStaff(container: HTMLDivElement, example: Example):
     applyInkToTickables(tickables);
 
     const stave = new Stave(STAVE_X + index * STAVE_WIDTH, STAVE_Y, STAVE_WIDTH - 20);
-    stave.setStyle(staffInkStyle);
+    stave.setStyle(staffInkStyle());
     if (index === 0) {
       stave.addClef('treble').addTimeSignature('4/4');
     }
@@ -243,15 +262,15 @@ export function renderExampleStaff(container: HTMLDivElement, example: Example):
     voice.setMode(Voice.Mode.SOFT);
     voice.addTickables(tickables);
 
-    context.setFillStyle(STAFF_INK);
-    context.setStrokeStyle(STAFF_INK);
+    context.setFillStyle(ink);
+    context.setStrokeStyle(ink);
     new Formatter().joinVoices([voice]).formatToStave([voice], stave);
 
     const beams = Beam.generateBeams(tickables, {
       beamRests: false,
       beamMiddleOnly: true,
     });
-    beams.forEach((beam) => beam.setStyle(staffInkStyle));
+    beams.forEach((beam) => beam.setStyle(staffInkStyle()));
 
     voice.draw(context, stave);
     beams.forEach((beam) => beam.setContext(context).draw());

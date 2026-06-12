@@ -1,8 +1,8 @@
 .landing {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 168, 56, 0.14), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(92, 184, 138, 0.08), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--hero-glow-1), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 100%, var(--hero-glow-2), transparent),
     var(--bg);
 }
 
@@ -14,7 +14,7 @@
   gap: 1rem;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(26, 34, 45, 0.85);
+  background: var(--surface-translucent);
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
@@ -285,8 +285,8 @@
   border-radius: var(--radius);
   border: 2px solid var(--border);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(232, 168, 56, 0.15);
+    0 12px 40px var(--shadow),
+    0 0 0 1px var(--photo-ring);
 }
 
 .about__intro {

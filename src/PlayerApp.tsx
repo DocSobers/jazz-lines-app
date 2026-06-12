@@ -86,16 +86,7 @@ function ExampleCard({
         <span className="example-card__count">{example.notes.length} notes</span>
       </p>
       <div className="example-card__actions">
-        <button
-          type="button"
-          className="btn btn--ghost btn--clef"
-          onClick={onStaff}
-          aria-label="View staff notation"
-          title="Staff notation"
-        >
-          𝄞
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={onPlay}>
+        <button type="button" className="btn btn--primary" onClick={onPlay}>
           Play
         </button>
         {canEdit && (
@@ -113,6 +104,15 @@ function ExampleCard({
             Add to line
           </button>
         )}
+        <button
+          type="button"
+          className="btn btn--ghost btn--clef"
+          onClick={onStaff}
+          aria-label="View staff notation"
+          title="Staff notation"
+        >
+          𝄞
+        </button>
       </div>
     </article>
   );
@@ -565,7 +565,12 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       </SiteFooter>
 
       {staffExample && (
-        <StaffCard example={staffExample} onClose={() => setStaffId(null)} />
+        <StaffCard
+          example={staffExample}
+          onClose={() => setStaffId(null)}
+          onPlay={() => handlePlayExample(staffExample)}
+          playing={playing}
+        />
       )}
 
       {canEdit && editingExample && (

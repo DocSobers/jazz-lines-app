@@ -72,7 +72,35 @@
 
 .navbar__error {
   font-size: 0.8rem;
-  color: #e07070;
+  color: var(--error);
+}
+
+.theme-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.theme-picker__label {
+  white-space: nowrap;
+}
+
+.theme-picker__select {
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.theme-picker__select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
 }
 
 .header {
@@ -182,7 +210,7 @@ h1 {
 .key-wheel__key--selected {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
@@ -254,7 +282,7 @@ h1 {
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #1a1205;
+  color: var(--accent-on);
   font-weight: 600;
 }
 
@@ -275,7 +303,7 @@ h1 {
 .btn--toggle-on {
   color: var(--accent);
   border-color: var(--accent-dim);
-  background: rgba(232, 168, 56, 0.12);
+  background: var(--accent-soft);
 }
 
 .chain-panel {
@@ -376,7 +404,7 @@ h1 {
   height: 1.5rem;
   border-radius: 50%;
   background: var(--accent);
-  color: #1a1205;
+  color: var(--accent-on);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -446,7 +474,7 @@ h1 {
 
 .example-card--highlight {
   border-color: var(--join);
-  box-shadow: 0 0 0 1px rgba(92, 184, 138, 0.25);
+  box-shadow: 0 0 0 1px var(--join-soft);
 }
 
 .example-card--disabled {
@@ -508,6 +536,7 @@ h1 {
 .example-card__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -519,7 +548,7 @@ h1 {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(8, 12, 18, 0.75);
+  background: var(--overlay);
   backdrop-filter: blur(4px);
 }
 
@@ -531,7 +560,7 @@ h1 {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 24px 48px var(--shadow);
 }
 
 .editor__header {
@@ -648,9 +677,11 @@ h1 {
 }
 
 .btn--clef {
-  font-size: 1.35rem;
+  margin-left: auto;
+  font-size: 1.9rem;
   line-height: 1;
-  padding-inline: 0.55rem;
+  padding: 0.85rem 0.85rem;
+  min-height: 3.35rem;
 }
 
 .staff-backdrop {
@@ -661,7 +692,7 @@ h1 {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(8, 12, 18, 0.75);
+  background: var(--overlay);
   backdrop-filter: blur(4px);
 }
 
@@ -673,7 +704,7 @@ h1 {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 24px 48px var(--shadow);
 }
 
 .staff-card__header {
@@ -707,7 +738,23 @@ h1 {
 
 .staff-card__scroll {
   overflow-x: auto;
-  padding: 1rem 1.25rem 1.5rem;
+  padding: 1rem 1.25rem 1rem;
+}
+
+.staff-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem 1.15rem;
+  border-top: 1px solid var(--border);
+}
+
+.staff-card__footer-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .staff-card__notation {
