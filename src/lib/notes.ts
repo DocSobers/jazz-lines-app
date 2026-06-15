@@ -155,8 +155,10 @@ export function flattenChain(items: ChainItem[]): Note[] {
       pitchClass(prevSounding[prevSounding.length - 1].pitch) ===
       pitchClass(currSounding[0].pitch);
 
+    const mergeBoundary = (curr.boundaryJoin ?? 'merge') === 'merge';
+
     let boundaryNote: Note | undefined;
-    if (sharesBoundary && result.length > 0) {
+    if (sharesBoundary && mergeBoundary && result.length > 0) {
       boundaryNote = result.pop();
     }
 

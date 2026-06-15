@@ -19,10 +19,14 @@ export interface Example {
   pickupBeat?: number;
 }
 
+export type BoundaryJoin = 'merge' | 'restate';
+
 export interface ChainItem {
   example: Example;
   /** Whole-octave shift applied to this idiom in the line */
   octave: number;
+  /** How this idiom connects to the previous one when boundary pitch classes match */
+  boundaryJoin?: BoundaryJoin;
 }
 
 export interface JoinedLine {

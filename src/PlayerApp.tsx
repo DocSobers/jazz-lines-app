@@ -17,6 +17,7 @@ import {
   type ExampleEdits,
 } from './lib/example-edits';
 import { findCompatibleNext } from './lib/join';
+import { canJoin } from './lib/notes';
 import {
   endPitchClass,
   flattenChain,
@@ -33,7 +34,7 @@ import {
   setPlaybackInstrument,
   stopPlayback,
 } from './lib/playback';
-import type { ChainItem, Example, Note } from './types';
+import type { BoundaryJoin, ChainItem, Example, Note } from './types';
 import './App.css';
 
 const OCTAVE_MIN = -3;
@@ -240,7 +241,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handleAdd = (example: Example) => {
     if (chain.some((item) => item.example.id === example.id)) return;
-    setChain((prev) => [...prev, { example, octave: 0 }]);
+    setChain((prev) => [...prev, { example, octave: 0, boundaryJoin: 'merge' }]);
   };
 
   const handleRemoveLast = () => {
@@ -263,6 +264,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
             }
           : item
       )
+    );
+  };
+
+  const setBoundaryJoin = (index: number, mode: BoundaryJoin) => {
+    if (index <= 0) return;
+    setChain((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, boundaryJoin: mode } : item))
     );
   };
 
@@ -497,9 +505,41 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                     </button>
                   </div>
                   {i < chain.length - 1 && (
-                    <span className="chain-list__join">
-                      ↳ {formatPitchClass(endPitchClass(item.example))}
-                    </span>
+                    <>
+                      <span className="chain-list__join">
+                        ↳ {formatPitchClass(endPitchClass(item.example))}
+                      </span>
+                      {canJoin(item.example, chain[i + 1].example) && (
+                        <div
+                          className="chain-list__boundary"
+                          role="group"
+                          aria-label={`Shared note with ${chain[i + 1].example.label}`}
+                        >
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--boundary${
+                              (chain[i + 1].boundaryJoin ?? 'merge') === 'merge'
+                                ? ' btn--toggle-on'
+                                : ''
+                            }`}
+                            onClick={() => setBoundaryJoin(i + 1, 'merge')}
+                            aria-pressed={(chain[i + 1].boundaryJoin ?? 'merge') === 'merge'}
+                          >
+                            Once
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--boundary${
+                              chain[i + 1].boundaryJoin === 'restate' ? ' btn--toggle-on' : ''
+                            }`}
+                            onClick={() => setBoundaryJoin(i + 1, 'restate')}
+                            aria-pressed={chain[i + 1].boundaryJoin === 'restate'}
+                          >
+                            Both
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </li>
               ))}

@@ -436,6 +436,21 @@ a.btn {
   color: var(--join);
 }
 
+.chain-list__boundary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.btn--boundary {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  min-height: 0;
+  line-height: 1.2;
+  border-radius: 4px;
+}
+
 .join-hint {
   margin: 1rem 0 0;
   font-size: 0.9rem;
