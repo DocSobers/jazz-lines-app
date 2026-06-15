@@ -150,7 +150,10 @@ Changes are listed in chronological order (oldest first).
 #### `baf5dc1` — Add ChangeLog and changelog maintenance rule
 - Add `ChangeLog.md` documenting all changes since the initial commit.
 - Add Heroku deploy history (v1–v26).
-- Add Cursor rule to update this file after each commit and deploy.
+- Add Cursor rule (`.cursor/rules/changelog.mdc`) to update this file after each commit and deploy.
+
+#### `8671bf0` — Fix ChangeLog commit hash for the changelog entry
+- Correct the self-referential commit hash in `ChangeLog.md` after amend changed the SHA.
 
 ---
 
@@ -198,4 +201,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (release v26, commit `baf5dc1`)*
+*Last updated: 2026-06-15 (release v26, commit `8671bf0`)*
