@@ -1,0 +1,24 @@
+---
+description: Active feature branch; keep main production-ready for Heroku
+alwaysApply: true
+---
+
+# Working branch
+
+Piano ii–V–I backing is developed on **`feature/piano-backing`**, not `main`.
+
+## Rules
+
+- Commit feature work only on `feature/piano-backing`
+- Do **not** merge to `main` or deploy to Heroku until the user requests a merge
+- `main` stays production-ready (current Heroku release)
+- Bug fixes that must ship immediately: branch from `main`, fix, merge to `main`, deploy; then cherry-pick or rebase onto `feature/piano-backing`
+
+## Deploy
+
+- **Production:** `git push heroku main` — only after merging to `main`
+- **Preview (optional):** only if the user explicitly asks
+
+## Merge checklist
+
+Backing v1 is ready when: ii–V–I comp loops in the line’s key, melody + comp stay in sync, instrument pairing works (piano comp except when melody is piano → nylon comp), Backing toggle is wired, ChangeLog updated, then merge → deploy.
