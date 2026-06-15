@@ -15,24 +15,28 @@ function ensureClickSynth(): Tone.MembraneSynth {
 }
 
 /**
- * Click quarter-note beats during the pickup rest only — stops when the
- * anacrusis melody enters (not a fixed four-beat count-in).
+ * Count-in clicks through the pickup rest; the final click uses the exact
+ * scheduled pickup onset (& of beat 4) so it aligns with the melody.
  */
 export function scheduleAnacrusisCountIn(
   startTime: number,
   bpm: number,
-  leadingRestQuarters: number
+  pickupOnsetSeconds: number
 ): void {
-  if (leadingRestQuarters <= 0) return;
+  if (pickupOnsetSeconds <= 0) return;
 
   const synth = ensureClickSynth();
   const quarter = 60 / bpm;
   const clickDur = 0.04;
+  const pickupBeat = pickupOnsetSeconds / quarter;
+  const downbeatCount = Math.floor(pickupBeat + 0.001);
 
-  for (let beat = 0; beat + 0.001 < leadingRestQuarters; beat++) {
+  for (let beat = 0; beat < downbeatCount; beat++) {
     const pitch = beat === 0 ? 'C6' : 'G5';
     synth.triggerAttackRelease(pitch, clickDur, startTime + beat * quarter);
   }
+
+  synth.triggerAttackRelease('E6', clickDur, startTime + pickupOnsetSeconds);
 }
 
 export function disposeMetronome(): void {

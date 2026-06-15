@@ -186,6 +186,10 @@ Changes are listed in chronological order (oldest first).
 - Metronome clicks quarter beats until the anacrusis note enters (uses `pickupBeat` rest length).
 - Comp unchanged: & of beat 2 on bar 2 (ii).
 
+#### `e73ee5f` — Align anacrusis click with melody; skip beat-4 downbeat gap
+- Clicks on beats 1–3 only, then & of beat 4 click synced to exact melody pickup time.
+- No downbeat click on beat 4 when pickup follows on the &.
+
 ---
 
 ## Heroku Deploy Changelog

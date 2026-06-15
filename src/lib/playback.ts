@@ -344,6 +344,13 @@ function notesForLoopCycle(notes: Note[]): Note[] {
   return [...notes, LOOP_REPEAT_REST];
 }
 
+/** Quarter-beat time when the first sounding note begins (after any pickup rest). */
+function pickupOnsetSeconds(notes: Note[], bpm: number, swing: SwingAmount): number {
+  const schedule = buildSchedule(notes, bpm, swing);
+  const first = schedule.find((n) => !n.rest);
+  return first?.time ?? 0;
+}
+
 export async function playNotes(
   notes: Note[],
   bpm: number,
@@ -382,7 +389,8 @@ export async function playNotes(
     const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
 
     if (leadingRestQuarters > 0) {
-      scheduleAnacrusisCountIn(pass.startTime, bpm, leadingRestQuarters);
+      const pickupOnset = pickupOnsetSeconds(notes, bpm, swing);
+      scheduleAnacrusisCountIn(pass.startTime, bpm, pickupOnset);
     }
 
     if (backing && compPlayer) {
