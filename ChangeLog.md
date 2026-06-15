@@ -182,6 +182,10 @@ Changes are listed in chronological order (oldest first).
 - Click on beats 1–4 during the pickup bar (accent on beat 1).
 - First piano comp hit on & of beat 2 of bar 2 (ii), after count-in completes.
 
+#### `71d3585` — Count-in only during pickup rest, not full bar
+- Metronome clicks quarter beats until the anacrusis note enters (uses `pickupBeat` rest length).
+- Comp unchanged: & of beat 2 on bar 2 (ii).
+
 ---
 
 ## Heroku Deploy Changelog
