@@ -151,7 +151,10 @@ Changes are listed in chronological order (oldest first).
 - Add `ChangeLog.md` documenting all changes since the initial commit.
 - Add Heroku deploy history (v1–v26).
 - Add Cursor rule (`.cursor/rules/changelog.mdc`) to update this file after each commit and deploy.
-- Follow-up sync commits (`8671bf0`–`5f09308`) established the separate-commit changelog workflow.
+- Follow-up sync commits (`8671bf0`–`d3ffb7b`) established the changelog workflow; meta-entries consolidated in `a45a81b`.
+
+#### `4d5c066` — Simplify ChangeLog footer format to avoid hash churn
+- Footer now shows date and Heroku release only (no commit SHA).
 
 ---
 
