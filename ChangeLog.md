@@ -199,4 +199,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (release v26, commit `a45a81b`)*
+*Last updated: 2026-06-15 (Heroku v26)*
