@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { renderExampleStaff } from '../lib/notation';
 import { buildSchedule, playNotes, stopPlayback } from '../lib/playback';
-import { playheadX, type StaffPlayheadLayout } from '../lib/staff-playhead';
+import { playheadX, toStaffElapsed, type StaffPlayheadLayout } from '../lib/staff-playhead';
 import type { Example, Note } from '../types';
 
 interface StaffCardProps {
@@ -77,9 +77,10 @@ export default function StaffCard({
       () => setPlaybackState(false),
       swing / 100,
       loop,
-      (elapsed) => {
+      (progress) => {
         if (!layout || layout.slots.length === 0) return;
-        const x = playheadX(layout, schedule, elapsed);
+        const staffElapsed = toStaffElapsed(progress);
+        const x = playheadX(layout, schedule, staffElapsed);
         setPlayheadPosition(x);
         const scroll = scrollRef.current;
         if (scroll) {

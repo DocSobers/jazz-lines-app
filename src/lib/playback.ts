@@ -13,7 +13,6 @@ let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
 const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
 let scheduledIds: number[] = [];
-let progressFrameId = 0;
 let playbackGeneration = 0;
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
@@ -210,35 +209,72 @@ export function buildSchedule(
 }
 
 function cancelProgressTracking(): void {
-  if (progressFrameId) {
-    cancelAnimationFrame(progressFrameId);
-    progressFrameId = 0;
-  }
+  Tone.Draw.cancel(0);
 }
 
 function scheduleTotalDuration(schedule: ScheduledNote[]): number {
   return schedule.reduce((max, note) => Math.max(max, note.time + note.duration), 0);
 }
 
+export function leadingRestDuration(
+  notes: Note[],
+  bpm: number,
+  swing: SwingAmount
+): number {
+  const leading: Note[] = [];
+  for (const note of notes) {
+    if (!note.rest) break;
+    leading.push(note);
+  }
+  if (leading.length === 0) return 0;
+  return scheduleTotalDuration(buildSchedule(leading, bpm, swing));
+}
+
+export interface PlaybackProgress {
+  elapsed: number;
+  totalDuration: number;
+  contentDuration: number;
+  leadingSkip: number;
+  isRepeat: boolean;
+}
+
 function startProgressTracking(
   generation: number,
   startTime: number,
   totalDuration: number,
-  onProgress?: (elapsed: number, total: number) => void
+  contentDuration: number,
+  leadingSkip: number,
+  isRepeat: boolean,
+  onProgress?: (progress: PlaybackProgress) => void
 ): void {
   cancelProgressTracking();
   if (!onProgress || totalDuration <= 0) return;
 
-  const tick = () => {
+  const emit = (time: number) => {
     if (generation !== playbackGeneration) return;
-    const elapsed = Math.max(0, Tone.now() - startTime);
-    onProgress(Math.min(elapsed, totalDuration), totalDuration);
-    if (elapsed < totalDuration) {
-      progressFrameId = requestAnimationFrame(tick);
-    }
+    onProgress({
+      elapsed: Math.min(Math.max(0, time - startTime), totalDuration),
+      totalDuration,
+      contentDuration,
+      leadingSkip,
+      isRepeat,
+    });
   };
 
-  progressFrameId = requestAnimationFrame(tick);
+  const scheduleTick = (drawTime: number) => {
+    Tone.Draw.schedule(() => {
+      if (generation !== playbackGeneration) return;
+      emit(drawTime);
+      const elapsed = drawTime - startTime;
+      if (elapsed < totalDuration) {
+        scheduleTick(drawTime + 1 / 60);
+      } else {
+        emit(startTime + totalDuration);
+      }
+    }, drawTime);
+  };
+
+  scheduleTick(startTime);
 }
 
 interface SchedulePassResult {
@@ -288,13 +324,15 @@ export async function playNotes(
   onComplete?: () => void,
   swing: SwingAmount = 1,
   loop = false,
-  onProgress?: (elapsed: number, total: number) => void
+  onProgress?: (progress: PlaybackProgress) => void
 ): Promise<void> {
   stopPlayback();
   loopActive = loop;
   const generation = ++playbackGeneration;
 
   const player = await ensurePlayer();
+  const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
+  const leadingSkip = leadingRestDuration(notes, bpm, swing);
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
@@ -304,7 +342,15 @@ export async function playNotes(
       cycleNotes = notesForLoopCycle(cycleNotes);
     }
     const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
-    startProgressTracking(generation, pass.startTime, pass.totalDuration, onProgress);
+    startProgressTracking(
+      generation,
+      pass.startTime,
+      pass.totalDuration,
+      contentDuration,
+      leadingSkip,
+      isRepeat,
+      onProgress
+    );
     const id = window.setTimeout(() => {
       scheduledIds = scheduledIds.filter((scheduledId) => scheduledId !== id);
       if (generation !== playbackGeneration) return;
@@ -312,7 +358,13 @@ export async function playNotes(
         runPass(true);
       } else {
         cancelProgressTracking();
-        onProgress?.(pass.totalDuration, pass.totalDuration);
+        onProgress?.({
+          elapsed: pass.totalDuration,
+          totalDuration: pass.totalDuration,
+          contentDuration,
+          leadingSkip,
+          isRepeat,
+        });
         onComplete?.();
       }
     }, pass.durationMs);
