@@ -5,6 +5,7 @@ import {
   Renderer,
   Stave,
   StaveNote,
+  Tuplet,
   Voice,
 } from 'vexflow';
 import type { Example, Note } from '../types';
@@ -98,6 +99,69 @@ function noteWrittenBeats(note: Note): number {
   return durationToBeats(note.duration);
 }
 
+type NoteGroup =
+  | { type: 'single'; notes: Note[] }
+  | { type: 'swing'; notes: [Note, Note] }
+  | { type: 'triplet'; notes: [Note, Note, Note] };
+
+/** Group notes into swung pairs, eighth triplets, or singles for engraving. */
+function groupMeasureNotes(notes: Note[]): NoteGroup[] {
+  const groups: NoteGroup[] = [];
+  let i = 0;
+
+  while (i < notes.length) {
+    const a = notes[i];
+    const b = notes[i + 1];
+    const c = notes[i + 2];
+    const d = notes[i + 3];
+    const e = notes[i + 4];
+
+    if (
+      a?.duration === '4t' &&
+      b?.duration === '8t' &&
+      c?.duration === '8t' &&
+      d?.duration === '8t' &&
+      e?.duration === '8t'
+    ) {
+      groups.push({ type: 'swing', notes: [a, b] });
+      groups.push({ type: 'triplet', notes: [c, d, e] });
+      i += 5;
+      continue;
+    }
+
+    if (a?.duration === '4t' && b?.duration === '8t') {
+      groups.push({ type: 'swing', notes: [a, b] });
+      i += 2;
+      continue;
+    }
+
+    if (a?.duration === '8t' && b?.duration === '8t' && c?.duration === '8t') {
+      groups.push({ type: 'triplet', notes: [a, b, c] });
+      i += 3;
+      continue;
+    }
+
+    groups.push({ type: 'single', notes: [a] });
+    i += 1;
+  }
+
+  return groups;
+}
+
+function writtenBeatsForGroup(group: NoteGroup): number {
+  switch (group.type) {
+    case 'swing':
+    case 'triplet':
+      return 1;
+    case 'single':
+      return noteWrittenBeats(group.notes[0]);
+  }
+}
+
+function writtenBeatsForNotes(notes: Note[]): number {
+  return groupMeasureNotes(notes).reduce((sum, group) => sum + writtenBeatsForGroup(group), 0);
+}
+
 function createRestNote(duration: string, dots = 0): StaveNote {
   return new StaveNote({
     keys: ['b/4'],
@@ -182,7 +246,7 @@ function restForWrittenBeats(beats: number): Note {
 
 function buildPickupMeasure(notes: Note[], pickupBeat: number): Note[] {
   const barNotes = pickupMeasureNotes(notes, pickupBeat);
-  const writtenSounding = barNotes.reduce((sum, note) => sum + noteWrittenBeats(note), 0);
+  const writtenSounding = writtenBeatsForNotes(barNotes);
   const writtenRest = MEASURE_BEATS - writtenSounding;
   return [restForWrittenBeats(writtenRest), ...barNotes];
 }
@@ -233,8 +297,32 @@ function buildStaffMeasures(example: Example): Note[][] {
   return splitRemainingMeasures(notes);
 }
 
-function measureToTickables(measureNotes: Note[]): StaveNote[] {
-  return measureNotes.flatMap((note) => noteToStaveNotes(note));
+function measureToTickablesWithTuplets(measureNotes: Note[]): {
+  tickables: StaveNote[];
+  tuplets: Tuplet[];
+} {
+  const tickables: StaveNote[] = [];
+  const tuplets: Tuplet[] = [];
+
+  for (const group of groupMeasureNotes(measureNotes)) {
+    if (group.type === 'triplet') {
+      const groupTickables = group.notes.map((note) => noteToStaveNotes(note)[0]);
+      tickables.push(...groupTickables);
+      tuplets.push(
+        new Tuplet(groupTickables, {
+          numNotes: 3,
+          notesOccupied: 2,
+        })
+      );
+      continue;
+    }
+
+    for (const note of group.notes) {
+      tickables.push(...noteToStaveNotes(note));
+    }
+  }
+
+  return { tickables, tuplets };
 }
 
 export function renderExampleStaff(
@@ -259,7 +347,7 @@ export function renderExampleStaff(
   const slots: { x: number }[] = [];
 
   measures.forEach((measureNotes, index) => {
-    const tickables = measureToTickables(measureNotes);
+    const { tickables, tuplets } = measureToTickablesWithTuplets(measureNotes);
     if (tickables.length === 0) return;
 
     applyInkToTickables(tickables);
@@ -287,6 +375,7 @@ export function renderExampleStaff(
 
     voice.draw(context, stave);
     beams.forEach((beam) => beam.setContext(context).draw());
+    tuplets.forEach((tuplet) => tuplet.setContext(context).draw());
 
     tickables.forEach((tickable) => {
       slots.push({ x: tickable.getAbsoluteX() });
