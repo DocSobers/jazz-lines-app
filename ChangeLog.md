@@ -159,6 +159,9 @@ Changes are listed in chronological order (oldest first).
 - Record `baf5dc1` and `8671bf0` in the change history.
 - Clarify in the Cursor rule that changelog updates should be a separate commit (not amend).
 
+#### `6a18e80` — Update ChangeLog for b2202f5
+- Sync change history and footer after `b2202f5`.
+
 ---
 
 ## Heroku Deploy Changelog

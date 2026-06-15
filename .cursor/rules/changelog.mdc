@@ -33,7 +33,11 @@ For config-only releases (no code deploy), use **Config** in the Type column and
 
 ## When committing and deploying together
 
-Do both updates before the final push when possible, or update ChangeLog in a follow-up commit immediately after deploy—never leave production deploys unrecorded.
+1. Commit the feature/fix.
+2. Update `ChangeLog.md` with that commit's hash and summary; commit the changelog update separately.
+3. Deploy to Heroku if required; append the new release row; commit another changelog update if the deploy happened after step 2.
+
+Changelog-only commits that record a prior commit may note both SHAs in one entry to avoid long chains of meta-commits.
 
 ## Do not
 
