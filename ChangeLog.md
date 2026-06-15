@@ -163,6 +163,13 @@ Changes are listed in chronological order (oldest first).
 #### `903fd06` — Update ChangeLog for 76d9622 and Heroku v27
 - Record triplet notation fix and v27 deploy.
 
+### `feature/piano-backing` (in progress — not deployed)
+
+#### `8d3787d` — Start piano backing feature branch with Phase 1 progression model
+- Create `feature/piano-backing`; `main` stays production-ready (Heroku v27).
+- Add `.cursor/rules/working-branch.mdc` — no merge/deploy from feature branch unless requested.
+- Phase 1: `comp-progression.ts` (4-bar ii–V–I in key wheel key), `comp-instruments.ts` (piano comp; nylon when melody is piano).
+
 ---
 
 ## Heroku Deploy Changelog
