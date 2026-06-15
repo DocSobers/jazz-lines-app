@@ -147,7 +147,7 @@ Changes are listed in chronological order (oldest first).
 - Fall back to x-proportional timing when staff glyph count drifts from playback notes.
 - Use `requestAnimationFrame` + `Tone.now()` for progress tracking.
 
-#### `e5fc030` — Add ChangeLog and changelog maintenance rule
+#### `baf5dc1` — Add ChangeLog and changelog maintenance rule
 - Add `ChangeLog.md` documenting all changes since the initial commit.
 - Add Heroku deploy history (v1–v26).
 - Add Cursor rule to update this file after each commit and deploy.
@@ -198,4 +198,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (release v26, commit `e5fc030`)*
+*Last updated: 2026-06-15 (release v26, commit `baf5dc1`)*
