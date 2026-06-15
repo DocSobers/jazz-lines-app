@@ -170,10 +170,13 @@ Changes are listed in chronological order (oldest first).
 - Add `.cursor/rules/working-branch.mdc` — no merge/deploy from feature branch unless requested.
 - Phase 1: `comp-progression.ts` (4-bar ii–V–I in key wheel key), `comp-instruments.ts` (piano comp; nylon when melody is piano).
 
-#### `0f8a04d` — Phase 2–3: piano comp engine and Backing toggle on Play line
+#### `0b3f88f` — Phase 2–3: piano comp engine and Backing toggle on Play line
 - Rootless voicings and medium-swing comp hits on & of 2 and & of 4.
 - Dual-sampler playback (melody + comp) synced with loop; 4-bar ii–V–I repeats under the full line.
 - **Backing** toggle in transport; comp instrument pairs with melody (piano comp, or guitar when melody is piano).
+
+#### `615ca7a` — Delay ii–V–I comp until after the pickup measure
+- When the line opens with a pickup rest (e.g. II-V #3 → #2), hold comp for one bar; first hits land on ii.
 
 ---
 
