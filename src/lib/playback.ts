@@ -11,6 +11,7 @@ import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sam
 import type { WheelKey } from './keys';
 import { compInstrumentForMelody, compVolumeDb } from './comp-instruments';
 import { scheduleCompHits } from './comp-schedule';
+import { harmonicCompStartQuarters } from './notes';
 
 let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
@@ -366,6 +367,7 @@ export async function playNotes(
   }
 
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
+  const harmonicStartQuarters = backing ? harmonicCompStartQuarters(notes) : 0;
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
@@ -384,7 +386,8 @@ export async function playNotes(
         bpm,
         swing,
         pass.startTime,
-        pass.totalDuration
+        pass.totalDuration,
+        harmonicStartQuarters
       );
     }
 

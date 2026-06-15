@@ -135,6 +135,22 @@ export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
   ];
 }
 
+const MEASURE_QUARTERS = 4;
+
+/**
+ * Quarter-beat delay before ii–V–I comp should begin.
+ * When the line opens with a pickup rest, bar 1 is anacrusis; comp enters on bar 2 (ii).
+ */
+export function harmonicCompStartQuarters(notes: Note[]): number {
+  const first = notes[0];
+  if (!first?.rest) return 0;
+  const match = first.duration.match(/^4n \* ([\d.]+)$/);
+  if (!match) return 0;
+  const leadingRest = Number(match[1]);
+  if (leadingRest <= 0) return 0;
+  return MEASURE_QUARTERS;
+}
+
 /** Merge chain items; per-item octave overrides auto-alignment for that idiom. */
 export function flattenChain(items: ChainItem[]): Note[] {
   if (items.length === 0) return [];

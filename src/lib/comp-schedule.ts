@@ -53,14 +53,21 @@ export function scheduleCompHits(
   bpm: number,
   swing: SwingAmount,
   startTime: number,
-  durationSeconds: number
+  durationSeconds: number,
+  harmonicStartQuarters = 0
 ): void {
   const quarter = 60 / bpm;
   const durationQuarters = durationSeconds / quarter;
-  const hits = buildCompHits(key, durationQuarters, bpm, swing);
+  const compDurationQuarters = Math.max(0, durationQuarters - harmonicStartQuarters);
+  const hits = buildCompHits(key, compDurationQuarters, bpm, swing);
+  const harmonicStartSeconds = harmonicStartQuarters * quarter;
   for (const hit of hits) {
     for (const pitch of hit.pitches) {
-      player.triggerAttackRelease(pitch, hit.duration, startTime + hit.time);
+      player.triggerAttackRelease(
+        pitch,
+        hit.duration,
+        startTime + harmonicStartSeconds + hit.time
+      );
     }
   }
 }
