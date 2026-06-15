@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { renderExampleStaff } from '../lib/notation';
-import { buildSchedule, playNotes, stopPlayback } from '../lib/playback';
-import { playheadX, toStaffElapsed, type StaffPlayheadLayout } from '../lib/staff-playhead';
+import { playNotes, stopPlayback } from '../lib/playback';
+import { playheadX, staffPlayheadElapsed, type StaffPlayheadLayout } from '../lib/staff-playhead';
 import type { Example, Note } from '../types';
 
 interface StaffCardProps {
@@ -28,7 +28,6 @@ export default function StaffCard({
   const staffRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<StaffPlayheadLayout | null>(null);
-  const scheduleRef = useRef(buildSchedule(playbackNotes, bpm, swing / 100));
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const [playheadPosition, setPlayheadPosition] = useState<number | null>(null);
@@ -46,7 +45,6 @@ export default function StaffCard({
     const el = staffRef.current;
     if (!el) return;
     layoutRef.current = renderExampleStaff(el, example);
-    scheduleRef.current = buildSchedule(playbackNotes, bpm, swing / 100);
     setPlayheadPosition(null);
   }, [example, playbackNotes, bpm, swing]);
 
@@ -66,8 +64,6 @@ export default function StaffCard({
   const handlePlay = () => {
     if (playing) return;
     const layout = layoutRef.current;
-    const schedule = buildSchedule(playbackNotes, bpm, swing / 100);
-    scheduleRef.current = schedule;
     setPlaybackState(true);
     setPlayheadPosition(layout?.slots[0]?.x ?? 0);
 
@@ -79,8 +75,12 @@ export default function StaffCard({
       loop,
       (progress) => {
         if (!layout || layout.slots.length === 0) return;
-        const staffElapsed = toStaffElapsed(progress);
-        const x = playheadX(layout, schedule, staffElapsed);
+        const contentElapsed = staffPlayheadElapsed(
+          progress.elapsed,
+          progress.contentDuration,
+          loop
+        );
+        const x = playheadX(layout, contentElapsed, progress.contentDuration);
         setPlayheadPosition(x);
         const scroll = scrollRef.current;
         if (scroll) {
