@@ -24,27 +24,10 @@ export default function PlayerCta({
   action = 'signup',
 }: PlayerCtaProps) {
   if (action === 'browse') {
-    if (!clerkEnabled) {
-      return (
-        <Link to={DEMO_PLAYER_PATH} className={className}>
-          {children}
-        </Link>
-      );
-    }
-
     return (
-      <>
-        <SignedIn>
-          <Link to={PLAYER_URL} className={className}>
-            {children}
-          </Link>
-        </SignedIn>
-        <SignedOut>
-          <Link to={DEMO_PLAYER_PATH} className={className}>
-            {children}
-          </Link>
-        </SignedOut>
-      </>
+      <Link to={DEMO_PLAYER_PATH} className={className}>
+        {children}
+      </Link>
     );
   }
 

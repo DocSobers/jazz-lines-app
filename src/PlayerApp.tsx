@@ -108,9 +108,12 @@ function ExampleCard({
           type="button"
           className="btn btn--ghost btn--clef"
           onClick={onStaff}
+          aria-describedby={`staff-tip-${example.id}`}
           aria-label="Open music notation window"
-          title="Click to open the music notation window"
         >
+          <span className="btn__tooltip" id={`staff-tip-${example.id}`} role="tooltip">
+            Click to open the music notation window
+          </span>
           𝄞
         </button>
       </div>
