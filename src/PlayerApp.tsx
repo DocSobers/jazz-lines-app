@@ -108,8 +108,8 @@ function ExampleCard({
           type="button"
           className="btn btn--ghost btn--clef"
           onClick={onStaff}
-          aria-label="View staff notation"
-          title="Staff notation"
+          aria-label="Open music notation window"
+          title="Click to open the music notation window"
         >
           𝄞
         </button>
