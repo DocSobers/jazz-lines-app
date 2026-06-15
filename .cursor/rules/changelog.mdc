@@ -18,7 +18,7 @@ This project keeps a running record in `ChangeLog.md`. Update it as part of ever
 ```
 
 3. Update the footer: `*Last updated: YYYY-MM-DD (release vN if deployed, commit \`<hash>\`)*`
-4. Commit the `ChangeLog.md` update as its own commit (do not amend the feature commit—amending changes the hash and breaks self-references in the log).
+4. Commit the `ChangeLog.md` update as its own commit (do not amend—the hash in the footer must match the changelog commit SHA).
 
 ## After every Heroku deploy
 

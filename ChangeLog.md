@@ -166,6 +166,9 @@ Changes are listed in chronological order (oldest first).
 - Record `6a18e80` in the change history.
 - Document commit → changelog → deploy order in `.cursor/rules/changelog.mdc`.
 
+#### `f42496c` — Update ChangeLog for 64422d9
+- Record `64422d9` and fix footer commit hash.
+
 ---
 
 ## Heroku Deploy Changelog
@@ -212,4 +215,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (release v26, commit `ccb129c`)*
+*Last updated: 2026-06-15 (release v26, commit `f42496c`)*
