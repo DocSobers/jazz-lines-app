@@ -160,6 +160,9 @@ Changes are listed in chronological order (oldest first).
 - Group three consecutive `8t` notes as a triplet with a bracket and “3” (e.g. II-V #6b beat 2).
 - Keep swung `4t`+`8t` pairs as beamed eighth notes; handle swing-then-triplet patterns (`4t 8t | 8t 8t 8t`).
 
+#### `903fd06` — Update ChangeLog for 76d9622 and Heroku v27
+- Record triplet notation fix and v27 deploy.
+
 ---
 
 ## Heroku Deploy Changelog
@@ -207,4 +210,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (Heroku v26)*
+*Last updated: 2026-06-15 (Heroku v27)*
