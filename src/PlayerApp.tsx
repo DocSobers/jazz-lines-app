@@ -7,6 +7,7 @@ import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
 import { buildDemoChain, DEMO_IDIOM_IDS } from './lib/demo-idioms';
+import { compInstrumentForMelody, compInstrumentLabel, iiViProgressionLabel } from './lib/comp';
 import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
 import { REFERENCE_KEY, semitonesFromReference, type WheelKey } from './lib/keys';
 import { IDIOM_SECTIONS, JAZZ_IDIOMS, PROGRESSION } from './data/jazz-idioms';
@@ -31,6 +32,7 @@ import {
   initPlaybackLifecycle,
   playNotes,
   preloadAllInstruments,
+  preloadInstrument,
   setPlaybackInstrument,
   stopPlayback,
 } from './lib/playback';
@@ -134,6 +136,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
   const [lineLoop, setLineLoop] = useState(false);
+  const [backingEnabled, setBackingEnabled] = useState(false);
   const [showAllJoinIdioms, setShowAllJoinIdioms] = useState(false);
   const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
@@ -181,11 +184,19 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   }, [chain, lineNotes]);
 
   const play = useCallback(
-    async (notes: Example['notes'], loop = false) => {
+    async (notes: Example['notes'], loop = false, withBacking = false) => {
       setPlaying(true);
-      await playNotes(notes, bpm, () => setPlaying(false), swing / 100, loop);
+      await playNotes(
+        notes,
+        bpm,
+        () => setPlaying(false),
+        swing / 100,
+        loop,
+        undefined,
+        withBacking ? { key: selectedKey } : null
+      );
     },
-    [bpm, swing]
+    [bpm, swing, selectedKey]
   );
 
   const handlePlayExample = (example: Example) => {
@@ -236,7 +247,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handlePlayChain = () => {
     if (lineNotes.length === 0) return;
-    void play(lineNotes, lineLoop);
+    void play(lineNotes, lineLoop, backingEnabled);
   };
 
   const handleAdd = (example: Example) => {
@@ -286,6 +297,11 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   useEffect(() => {
     setPlaybackInstrument(instrument);
   }, [instrument]);
+
+  useEffect(() => {
+    if (!backingEnabled) return;
+    preloadInstrument(compInstrumentForMelody(instrument));
+  }, [backingEnabled, instrument]);
 
   useEffect(() => {
     if (chain.length === 0) setShowLineStaff(false);
@@ -424,6 +440,20 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
             title="Repeat your line until Stop (1/8-note pause between repeats)"
           >
             Loop
+          </button>
+          <button
+            type="button"
+            className={`btn btn--ghost btn--toggle ${backingEnabled ? 'btn--toggle-on' : ''}`}
+            onClick={() => setBackingEnabled((prev) => !prev)}
+            disabled={chain.length === 0}
+            aria-pressed={backingEnabled}
+            title={
+              backingEnabled
+                ? `${compInstrumentLabel(instrument)} · ${iiViProgressionLabel(selectedKey)}`
+                : `${compInstrumentLabel(instrument)} over fixed ii–V–I in ${selectedKey}`
+            }
+          >
+            Backing
           </button>
           <button
             type="button"

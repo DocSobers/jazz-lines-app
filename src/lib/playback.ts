@@ -8,6 +8,9 @@ import {
   type InstrumentId,
 } from './instruments';
 import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sample-cache';
+import type { WheelKey } from './keys';
+import { compInstrumentForMelody, compVolumeDb } from './comp-instruments';
+import { scheduleCompHits } from './comp-schedule';
 
 let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
@@ -58,8 +61,14 @@ async function ensurePlayer(): Promise<Sampler> {
   return loadInstrument(currentInstrumentId);
 }
 
-function activePlayer(): Sampler | null {
-  return players[currentInstrumentId] ?? null;
+function releaseAllPlayers(): void {
+  for (const player of Object.values(players)) {
+    player?.releaseAll();
+  }
+}
+
+export interface BackingOptions {
+  key: WheelKey;
 }
 
 /** Switch playback instrument (stops current audio). */
@@ -339,24 +348,46 @@ export async function playNotes(
   onComplete?: () => void,
   swing: SwingAmount = 1,
   loop = false,
-  onProgress?: (progress: PlaybackProgress) => void
+  onProgress?: (progress: PlaybackProgress) => void,
+  backing?: BackingOptions | null
 ): Promise<void> {
   stopPlayback();
   loopActive = loop;
   const generation = ++playbackGeneration;
 
   const player = await ensurePlayer();
+  player.volume.value = instrumentVolume(currentInstrumentId);
+
+  let compPlayer: Sampler | null = null;
+  if (backing) {
+    const compId = compInstrumentForMelody(currentInstrumentId);
+    compPlayer = await loadInstrument(compId);
+    compPlayer.volume.value = compVolumeDb(compId);
+  }
+
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
-    if (isRepeat) activePlayer()?.releaseAll();
+    if (isRepeat) releaseAllPlayers();
 
     let cycleNotes = notes;
     if (loop) {
       cycleNotes = notesForLoopCycle(cycleNotes);
     }
     const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
+
+    if (backing && compPlayer) {
+      scheduleCompHits(
+        compPlayer,
+        backing.key,
+        bpm,
+        swing,
+        pass.startTime,
+        pass.totalDuration
+      );
+    }
+
     startProgressTracking(
       generation,
       pass.startTime,
@@ -388,7 +419,7 @@ export function stopPlayback(): void {
   loopActive = false;
   playbackGeneration += 1;
   cancelProgressTracking();
-  activePlayer()?.releaseAll();
+  releaseAllPlayers();
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
 }
