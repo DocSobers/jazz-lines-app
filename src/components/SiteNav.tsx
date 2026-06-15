@@ -8,6 +8,7 @@ import {
 } from '@clerk/clerk-react';
 import '../pages/LandingPage.css';
 import ThemePicker from './ThemePicker';
+import { AUTH_REDIRECT_PROPS, PLAYER_PATH } from '../lib/auth-routes';
 
 interface SiteNavProps {
   clerkEnabled: boolean;
@@ -49,12 +50,12 @@ export default function SiteNav({ clerkEnabled }: SiteNavProps) {
         {clerkEnabled ? (
           <>
             <SignedOut>
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" {...AUTH_REDIRECT_PROPS}>
                 <button type="button" className="btn btn--ghost">
                   Sign in
                 </button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="modal" {...AUTH_REDIRECT_PROPS}>
                 <button type="button" className="btn btn--primary">
                   Sign up
                 </button>
@@ -67,7 +68,7 @@ export default function SiteNav({ clerkEnabled }: SiteNavProps) {
         ) : null}
         {clerkEnabled ? (
           <SignedIn>
-            <Link to="/app" className="btn btn--primary">
+            <Link to={PLAYER_PATH} className="btn btn--primary">
               Open player
             </Link>
           </SignedIn>

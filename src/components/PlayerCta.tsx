@@ -6,8 +6,9 @@ import {
   SignUpButton,
 } from '@clerk/clerk-react';
 import { DEMO_PLAYER_PATH } from '../lib/demo-idioms';
+import { AUTH_REDIRECT_PROPS, PLAYER_PATH } from '../lib/auth-routes';
 
-const PLAYER_URL = '/app';
+const PLAYER_URL = PLAYER_PATH;
 
 interface PlayerCtaProps {
   clerkEnabled: boolean;
@@ -49,7 +50,7 @@ export default function PlayerCta({
         </Link>
       </SignedIn>
       <SignedOut>
-        <AuthButton mode="modal" forceRedirectUrl={PLAYER_URL}>
+        <AuthButton mode="modal" {...AUTH_REDIRECT_PROPS}>
           <button type="button" className={className}>
             {children}
           </button>

@@ -10,6 +10,7 @@ import {
 import { JAZZ_IDIOMS } from '../data/jazz-idioms';
 import type { ExampleEdits } from '../lib/example-edits';
 import { exportEditsToXlsx } from '../lib/export-xlsx';
+import { AUTH_REDIRECT_PROPS } from '../lib/auth-routes';
 import ThemePicker from './ThemePicker';
 
 interface NavBarProps {
@@ -77,12 +78,12 @@ export default function NavBar({ edits, clerkEnabled, isAdmin }: NavBarProps) {
         {clerkEnabled ? (
           <>
             <SignedOut>
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" {...AUTH_REDIRECT_PROPS}>
                 <button type="button" className="btn btn--ghost">
                   Sign in
                 </button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="modal" {...AUTH_REDIRECT_PROPS}>
                 <button type="button" className="btn btn--primary">
                   Sign up
                 </button>
