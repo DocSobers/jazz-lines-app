@@ -156,6 +156,10 @@ Changes are listed in chronological order (oldest first).
 #### `4d5c066` — Simplify ChangeLog footer format to avoid hash churn
 - Footer now shows date and Heroku release only (no commit SHA).
 
+#### `76d9622` — Render eighth-note triplets on staff notation with VexFlow tuplets
+- Group three consecutive `8t` notes as a triplet with a bracket and “3” (e.g. II-V #6b beat 2).
+- Keep swung `4t`+`8t` pairs as beamed eighth notes; handle swing-then-triplet patterns (`4t 8t | 8t 8t 8t`).
+
 ---
 
 ## Heroku Deploy Changelog
@@ -190,7 +194,8 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 | **v23** | 2026-06-15 17:11 | Deploy `9552407` | **Show all** toggle; hide **Add to line** when idiom is in line |
 | **v24** | 2026-06-15 17:20 | Deploy `cbf4070` | Fix **Your line** loop stopping after first measure |
 | **v25** | 2026-06-15 17:35 | Deploy `0e49cb5` | Fix playhead stalling on rests during first loop pass |
-| **v26** | 2026-06-15 17:43 | Deploy `f7d1e3c` | Fix playhead finishing early and stalling on first loop pass *(current)* |
+| **v26** | 2026-06-15 17:43 | Deploy `f7d1e3c` | Fix playhead finishing early and stalling on first loop pass |
+| **v27** | 2026-06-15 17:52 | Deploy `76d9622` | Render eighth-note triplets on staff notation (e.g. II-V #6b) *(current)* |
 
 ### Notes on Heroku releases
 
