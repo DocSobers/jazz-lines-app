@@ -524,6 +524,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                             }`}
                             onClick={() => setBoundaryJoin(i + 1, 'merge')}
                             aria-pressed={(chain[i + 1].boundaryJoin ?? 'merge') === 'merge'}
+                            data-tooltip="Shared note plays once — the line continues without repeating it"
                           >
                             Once
                           </button>
@@ -534,6 +535,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                             }`}
                             onClick={() => setBoundaryJoin(i + 1, 'restate')}
                             aria-pressed={chain[i + 1].boundaryJoin === 'restate'}
+                            data-tooltip="Each idiom plays fully — the shared note sounds at the end and again at the start"
                           >
                             Both
                           </button>
@@ -651,7 +653,6 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           playbackNotes={lineNotes}
           bpm={bpm}
           swing={swing}
-          loop={lineLoop}
           className="staff-card--line"
           hint={`${chain.length} idiom${chain.length !== 1 ? 's' : ''} · Treble clef · 4/4 · swung eighths`}
           onClose={() => setShowLineStaff(false)}

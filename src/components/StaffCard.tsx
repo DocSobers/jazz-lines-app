@@ -9,7 +9,6 @@ interface StaffCardProps {
   playbackNotes: Note[];
   bpm: number;
   swing: number;
-  loop?: boolean;
   onClose: () => void;
   onPlayingChange?: (playing: boolean) => void;
   hint?: string;
@@ -21,7 +20,6 @@ export default function StaffCard({
   playbackNotes,
   bpm,
   swing,
-  loop = false,
   onClose,
   onPlayingChange,
   hint = 'Treble clef · 4/4 · swung eighths',
@@ -32,6 +30,7 @@ export default function StaffCard({
   const layoutRef = useRef<StaffPlayheadLayout | null>(null);
   const scheduleRef = useRef(buildSchedule(playbackNotes, bpm, swing / 100));
   const [playing, setPlaying] = useState(false);
+  const [loop, setLoop] = useState(false);
   const [playheadPosition, setPlayheadPosition] = useState<number | null>(null);
 
   const setPlaybackState = useCallback(
@@ -137,14 +136,26 @@ export default function StaffCard({
           <p className="staff-card__footer-hint">
             Uses your current tempo, swing, and instrument.
           </p>
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={handlePlay}
-            disabled={playing}
-          >
-            {playing ? 'Playing…' : 'Play'}
-          </button>
+          <div className="staff-card__footer-actions">
+            <button
+              type="button"
+              className={`btn btn--ghost btn--toggle ${loop ? 'btn--toggle-on' : ''}`}
+              onClick={() => setLoop((prev) => !prev)}
+              disabled={playing}
+              aria-pressed={loop}
+              title="Repeat until Stop (1/8-note pause between repeats)"
+            >
+              Loop
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={handlePlay}
+              disabled={playing}
+            >
+              {playing ? 'Playing…' : 'Play'}
+            </button>
+          </div>
         </footer>
       </div>
     </div>

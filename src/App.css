@@ -440,15 +440,50 @@ a.btn {
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
+  position: relative;
 }
 
 .btn--boundary {
+  position: relative;
+  overflow: visible;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.2rem 0.45rem;
   min-height: 0;
   line-height: 1.2;
   border-radius: 4px;
+}
+
+.btn--boundary[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.45rem);
+  z-index: 30;
+  width: max-content;
+  max-width: 11rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.btn--boundary:hover::after,
+.btn--boundary:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 .join-hint {
@@ -856,6 +891,13 @@ a.btn {
   gap: 0.75rem;
   padding: 0.85rem 1.5rem 1.15rem;
   border-top: 1px solid var(--border);
+}
+
+.staff-card__footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .staff-card__footer-hint {
