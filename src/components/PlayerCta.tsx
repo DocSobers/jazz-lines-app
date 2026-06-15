@@ -14,7 +14,7 @@ interface PlayerCtaProps {
   clerkEnabled: boolean;
   className?: string;
   children: React.ReactNode;
-  /** sign-up/sign-in gate full player; browse opens guest demo */
+  /** sign-up/sign-in gate full player; browse opens demo for guests, full player when signed in */
   action?: 'signin' | 'signup' | 'browse';
 }
 
@@ -25,10 +25,27 @@ export default function PlayerCta({
   action = 'signup',
 }: PlayerCtaProps) {
   if (action === 'browse') {
+    if (!clerkEnabled) {
+      return (
+        <Link to={DEMO_PLAYER_PATH} className={className}>
+          {children}
+        </Link>
+      );
+    }
+
     return (
-      <Link to={DEMO_PLAYER_PATH} className={className}>
-        {children}
-      </Link>
+      <>
+        <SignedIn>
+          <Link to={PLAYER_URL} className={className}>
+            {children}
+          </Link>
+        </SignedIn>
+        <SignedOut>
+          <Link to={DEMO_PLAYER_PATH} className={className}>
+            {children}
+          </Link>
+        </SignedOut>
+      </>
     );
   }
 
