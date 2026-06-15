@@ -12,6 +12,7 @@ import type { WheelKey } from './keys';
 import { compInstrumentForMelody, compVolumeDb } from './comp-instruments';
 import { scheduleCompHits } from './comp-schedule';
 import { harmonicCompStartQuarters } from './notes';
+import { disposeMetronome, scheduleAnacrusisCountIn } from './metronome';
 
 let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
@@ -367,7 +368,7 @@ export async function playNotes(
   }
 
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
-  const harmonicStartQuarters = backing ? harmonicCompStartQuarters(notes) : 0;
+  const harmonicStartQuarters = harmonicCompStartQuarters(notes);
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
@@ -378,6 +379,10 @@ export async function playNotes(
       cycleNotes = notesForLoopCycle(cycleNotes);
     }
     const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
+
+    if (harmonicStartQuarters > 0) {
+      scheduleAnacrusisCountIn(pass.startTime, bpm, harmonicStartQuarters);
+    }
 
     if (backing && compPlayer) {
       scheduleCompHits(
@@ -429,6 +434,7 @@ export function stopPlayback(): void {
 
 export function disposePlayback(): void {
   stopPlayback();
+  disposeMetronome();
   for (const player of Object.values(players)) {
     player?.dispose();
   }

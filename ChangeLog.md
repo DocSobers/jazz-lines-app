@@ -178,6 +178,10 @@ Changes are listed in chronological order (oldest first).
 #### `615ca7a` — Delay ii–V–I comp until after the pickup measure
 - When the line opens with a pickup rest (e.g. II-V #3 → #2), hold comp for one bar; first hits land on ii.
 
+#### `f68a670` — Anacrusis count-in metronome; ii comp on & of beat 2
+- Click on beats 1–4 during the pickup bar (accent on beat 1).
+- First piano comp hit on & of beat 2 of bar 2 (ii), after count-in completes.
+
 ---
 
 ## Heroku Deploy Changelog

@@ -11,7 +11,7 @@ export interface CompHit {
 }
 
 /** & of 2 and & of 4 within one bar (quarter-beat offsets from bar start). */
-function swungCompOffsetsInBar(swing: SwingAmount): [number, number] {
+export function swungCompOffsetsInBar(swing: SwingAmount): [number, number] {
   const push = 0.25 * swing;
   return [1.5 + push, 3.5 + push];
 }

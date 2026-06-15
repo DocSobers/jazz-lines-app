@@ -139,7 +139,8 @@ const MEASURE_QUARTERS = 4;
 
 /**
  * Quarter-beat delay before ii–V–I comp should begin.
- * When the line opens with a pickup rest, bar 1 is anacrusis; comp enters on bar 2 (ii).
+ * When the line opens with a pickup rest, bar 1 is anacrusis (count-in);
+ * first comp hits land on & of beat 2 on bar 2 (ii).
  */
 export function harmonicCompStartQuarters(notes: Note[]): number {
   const first = notes[0];
