@@ -695,7 +695,8 @@ a.btn {
   overflow: visible;
 }
 
-.btn--clef .btn__tooltip {
+.btn--clef[data-tooltip]::after {
+  content: attr(data-tooltip);
   position: absolute;
   right: 0;
   bottom: calc(100% + 0.55rem);
@@ -719,8 +720,8 @@ a.btn {
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.btn--clef:hover .btn__tooltip,
-.btn--clef:focus-visible .btn__tooltip {
+.btn--clef:hover::after,
+.btn--clef:focus-visible::after {
   opacity: 1;
   visibility: visible;
 }
