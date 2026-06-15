@@ -1,0 +1,41 @@
+---
+description: Update ChangeLog.md after every commit and Heroku deploy
+alwaysApply: true
+---
+
+# ChangeLog maintenance
+
+This project keeps a running record in `ChangeLog.md`. Update it as part of every commit/deploy workflow.
+
+## After every git commit
+
+1. Read the new commit hash and message: `git log -1 --format='%h|%s'`
+2. Append an entry under **Change History** (newest at the bottom of its date group, or start a new date group if needed):
+
+```markdown
+#### `<hash>` — <commit subject>
+- <1–3 bullets summarizing user-visible or architectural changes>
+```
+
+3. Update the footer: `*Last updated: YYYY-MM-DD (release vN if deployed, commit \`<hash>\`)*`
+
+## After every Heroku deploy
+
+1. Confirm the release: `heroku releases -a jazz-lines-app -n 3`
+2. Append a row to the **Heroku Deploy Changelog** table:
+
+| **vN** | YYYY-MM-DD HH:MM | Deploy `<hash>` | <short description from commit> |
+
+For config-only releases (no code deploy), use **Config** in the Type column and list the vars changed.
+
+3. Update the *Last updated* footer with the new release number.
+
+## When committing and deploying together
+
+Do both updates before the final push when possible, or update ChangeLog in a follow-up commit immediately after deploy—never leave production deploys unrecorded.
+
+## Do not
+
+- Skip changelog updates for "small" fixes
+- Commit secrets or env var values in the changelog
+- Remove or rewrite historical entries
