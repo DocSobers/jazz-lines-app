@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "start": "serve -s dist -l $PORT",
+    "start": "node server/index.js",
     "heroku-postbuild": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -17,10 +17,13 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.8",
+    "express": "^4.21.2",
+    "geoip-lite": "^1.4.10",
+    "nodemailer": "^6.10.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
-    "serve": "^14.2.4",
+    "svix": "^1.62.0",
     "tone": "^15.1.22",
     "tonejs-instrument-flute-mp3": "^1.1.2",
     "tonejs-instrument-guitar-nylon-mp3": "^1.1.1",
