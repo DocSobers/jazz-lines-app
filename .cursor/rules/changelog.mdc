@@ -17,8 +17,8 @@ This project keeps a running record in `ChangeLog.md`. Update it as part of ever
 - <1–3 bullets summarizing user-visible or architectural changes>
 ```
 
-3. Update the footer: `*Last updated: YYYY-MM-DD (release vN if deployed, commit \`<hash>\`)*`
-4. Commit the `ChangeLog.md` update as its own commit (do not amend—the hash in the footer must match the changelog commit SHA).
+3. Update the footer: `*Last updated: YYYY-MM-DD (release vN if deployed, commit \`<hash>\`)*` where `<hash>` is the changelog commit itself (`git log -1 --format=%h` after step 4).
+4. Commit only `ChangeLog.md` (and `.cursor/rules/changelog.mdc` if the workflow changed). Use one changelog commit per feature—batch entries if needed; avoid long chains of meta-only commits.
 
 ## After every Heroku deploy
 
