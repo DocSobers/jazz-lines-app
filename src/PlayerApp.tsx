@@ -95,12 +95,11 @@ function ExampleCard({
             Edit
           </button>
         )}
-        {canAdd && (
+        {canAdd && !inLine && (
           <button
             type="button"
             className="btn btn--primary"
             onClick={onAdd}
-            disabled={inLine}
           >
             Add to line
           </button>
@@ -135,6 +134,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
   const [lineLoop, setLineLoop] = useState(false);
+  const [showAllJoinIdioms, setShowAllJoinIdioms] = useState(false);
   const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
 
@@ -573,25 +573,46 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         )}
       </section>
 
-      {chain.length > 0 && compatible.length > 0 && (
+      {chain.length > 0 && (
         <section className="compatible-section">
-          <h2>Can join next</h2>
-          <div className="example-grid">
-            {compatible.map((example) => (
-              <ExampleCard
-                key={example.id}
-                example={example}
-                onPlay={() => handlePlayExample(example)}
-                onStaff={() => openIdiomStaff(example.id)}
-                onEdit={() => setEditingId(example.id)}
-                onAdd={() => handleAdd(example)}
-                canAdd
-                canEdit={canEdit}
-                highlight
-                edited={Boolean(edits[example.id])}
-              />
-            ))}
+          <div className="compatible-section__top">
+            <h2>Can join next</h2>
+            <button
+              type="button"
+              className={`btn btn--ghost btn--toggle ${showAllJoinIdioms ? 'btn--toggle-on' : ''}`}
+              onClick={() => setShowAllJoinIdioms((prev) => !prev)}
+              aria-pressed={showAllJoinIdioms}
+            >
+              Show all
+            </button>
           </div>
+          <div className="example-grid">
+            {(showAllJoinIdioms ? idioms : compatible).map((example) => {
+              const inChain = chain.some((item) => item.example.id === example.id);
+              const canJoin = compatibleIds.has(example.id);
+              return (
+                <ExampleCard
+                  key={example.id}
+                  example={example}
+                  onPlay={() => handlePlayExample(example)}
+                  onStaff={() => openIdiomStaff(example.id)}
+                  onEdit={() => setEditingId(example.id)}
+                  onAdd={() => handleAdd(example)}
+                  canAdd={!inChain}
+                  canEdit={canEdit}
+                  inLine={inChain}
+                  highlight={canJoin && !showAllJoinIdioms}
+                  edited={Boolean(edits[example.id])}
+                />
+              );
+            })}
+          </div>
+          {!showAllJoinIdioms && compatible.length === 0 && (
+            <p className="join-hint join-hint--none">
+              No idioms start on <strong>{chainEnd && formatPitchClass(chainEnd)}</strong> — use{' '}
+              <strong>Show all</strong> to browse every idiom.
+            </p>
+          )}
         </section>
       )}
 
@@ -615,6 +636,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                 const matchesNext =
                   chain.length > 0 && compatibleIds.has(example.id);
 
+                if (showAllJoinIdioms && chain.length > 0) return null;
                 if (matchesNext && !inChain) return null;
 
                 return (

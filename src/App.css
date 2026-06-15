@@ -522,6 +522,15 @@ a.btn {
 
 .compatible-section h2 {
   color: var(--join);
+  margin: 0;
+}
+
+.compatible-section__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
 }
 
