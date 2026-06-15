@@ -15,3 +15,8 @@ export function compInstrumentLabel(melody: InstrumentId): string {
 export function compVolumeDb(instrument: InstrumentId): number {
   return instrumentVolume(instrument) - 10;
 }
+
+/** Upright jazz bass sits under the melody and comp. */
+export function bassVolumeDb(): number {
+  return -2;
+}

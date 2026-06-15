@@ -3,6 +3,7 @@ import type { WheelKey } from './keys';
 import type { SwingAmount } from './playback';
 import { iiViProgression } from './comp-progression';
 import { chordVoicingPitches } from './comp-voicings';
+import { quarterLengthSeconds } from './timing';
 
 export interface CompHit {
   time: number;
@@ -10,27 +11,38 @@ export interface CompHit {
   duration: number;
 }
 
+/** Triplet "&" within a bar — matches pickup StartTime 3.67 (= 3 + 2/3). */
+const TRIPLET_AND_OF_2 = 1 + 2 / 3;
+const TRIPLET_AND_OF_4 = 3 + 2 / 3;
+
 /** & of 2 and & of 4 within one bar (quarter-beat offsets from bar start). */
 export function swungCompOffsetsInBar(swing: SwingAmount): [number, number] {
-  const push = 0.25 * swing;
-  return [1.5 + push, 3.5 + push];
+  const straight: [number, number] = [1.5, 3.5];
+  const triplet: [number, number] = [TRIPLET_AND_OF_2, TRIPLET_AND_OF_4];
+  if (swing <= 0) return straight;
+  return [
+    straight[0] + swing * (triplet[0] - straight[0]),
+    straight[1] + swing * (triplet[1] - straight[1]),
+  ];
 }
 
-/** Build comp hits for a duration in quarter-note beats. */
+/** Build comp hits on the absolute quarter-beat grid. */
 export function buildCompHits(
   key: WheelKey,
   durationQuarters: number,
   bpm: number,
-  swing: SwingAmount
+  swing: SwingAmount,
+  harmonicStartQuarters = 0
 ): CompHit[] {
   const progression = iiViProgression(key);
-  const quarter = 60 / bpm;
+  const quarter = quarterLengthSeconds(bpm);
   const hitDuration = quarter * 0.45;
   const [off1, off2] = swungCompOffsetsInBar(swing);
   const hits: CompHit[] = [];
 
-  for (let barStart = 0; barStart < durationQuarters; barStart += 4) {
-    const barIndex = Math.floor(barStart / 4) % progression.length;
+  for (let barStart = harmonicStartQuarters; barStart < durationQuarters; barStart += 4) {
+    const barIndex =
+      Math.floor((barStart - harmonicStartQuarters) / 4) % progression.length;
     const pitches = chordVoicingPitches(progression[barIndex].chord);
 
     for (const offset of [off1, off2]) {
@@ -54,19 +66,25 @@ export function scheduleCompHits(
   swing: SwingAmount,
   startTime: number,
   durationSeconds: number,
-  harmonicStartQuarters = 0
+  harmonicStartQuarters = 0,
+  playbackOffsetSeconds = 0
 ): void {
-  const quarter = 60 / bpm;
+  const quarter = quarterLengthSeconds(bpm);
   const durationQuarters = durationSeconds / quarter;
-  const compDurationQuarters = Math.max(0, durationQuarters - harmonicStartQuarters);
-  const hits = buildCompHits(key, compDurationQuarters, bpm, swing);
-  const harmonicStartSeconds = harmonicStartQuarters * quarter;
+  const hits = buildCompHits(
+    key,
+    durationQuarters,
+    bpm,
+    swing,
+    harmonicStartQuarters
+  );
+
   for (const hit of hits) {
     for (const pitch of hit.pitches) {
       player.triggerAttackRelease(
         pitch,
         hit.duration,
-        startTime + harmonicStartSeconds + hit.time
+        startTime + hit.time + playbackOffsetSeconds
       );
     }
   }

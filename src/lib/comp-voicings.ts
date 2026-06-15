@@ -57,3 +57,15 @@ export function chordVoicingPitches(chord: ChordSymbol, baseOctave = 3): string[
     pitchFromSemitone(rootSemi + interval, 0)
   );
 }
+
+/** Low root for upright bass (e.g. Dm7 → D2). */
+export function chordRootPitch(chord: ChordSymbol, octave = 2): string {
+  return `${pitchClass(chord.root)}${octave}`;
+}
+
+/** Perfect fifth above the root for bass beat 3 (e.g. Dm7 → A2). */
+export function chordFifthPitch(chord: ChordSymbol, octave = 2): string {
+  const root = PITCH_CLASS_SEMITONE[pitchClass(chord.root)] ?? 0;
+  const rootSemi = root + octave * 12;
+  return pitchFromSemitone(rootSemi + 7, 0);
+}

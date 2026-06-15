@@ -1,4 +1,5 @@
 import { INSTRUMENTS, type InstrumentId } from './instruments';
+import { bassSampleUrls } from './bass-sampler';
 import { fluteSampleUrls } from './flute-sampler';
 import { nylonSampleUrls } from './guitar-sampler';
 import { pianoSampleUrls } from './piano-sampler';
@@ -61,6 +62,11 @@ export async function warmSampleCache(urls: string[] = allSampleUrls()): Promise
       }
     })
   );
+}
+
+/** Prefetch upright bass samples for backing. */
+export async function warmBassCache(): Promise<void> {
+  await warmSampleCache(bassSampleUrls());
 }
 
 export async function warmInstrumentCache(id: InstrumentId): Promise<void> {

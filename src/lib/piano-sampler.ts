@@ -30,6 +30,7 @@ export function pianoSampleUrls(): string[] {
 export function createPianoSampler(onload?: () => void): Sampler {
   return new Sampler({
     urls: PIANO_URLS,
+    attack: 0.001,
     onload,
   });
 }

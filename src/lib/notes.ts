@@ -126,34 +126,21 @@ function joinOctaveOffset(
   return pitchOctave(prevEnd.pitch) - pitchOctave(nextStart.pitch);
 }
 
-/** Leading rest so a pickup lands on the correct beat (e.g. "and" of 4). */
+/**
+ * Spreadsheet StartTime (e.g. 3.67) is quarter beats from bar 1 to the first note.
+ * For & of beat 4 with triplet pickup (8t), that is beat 4 + two triplet eighths (3 + 2/3).
+ */
+export function pickupOnsetQuarters(pickupBeat: number): number {
+  return pickupBeat;
+}
+
+/** Leading rest so a pickup lands on the correct beat (e.g. "&" of 4). */
 export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
   if (!pickupBeat || pickupBeat <= 0) return notes;
   return [
     { rest: true, pitch: 'R', duration: `4n * ${pickupBeat}` },
     ...notes,
   ];
-}
-
-const MEASURE_QUARTERS = 4;
-
-/** Quarter-beat length of the leading pickup rest, or 0 when none. */
-export function leadingPickupRestQuarters(notes: Note[]): number {
-  const first = notes[0];
-  if (!first?.rest) return 0;
-  const match = first.duration.match(/^4n \* ([\d.]+)$/);
-  if (!match) return 0;
-  const leadingRest = Number(match[1]);
-  return leadingRest > 0 ? leadingRest : 0;
-}
-
-/**
- * Quarter-beat delay before ii–V–I comp should begin.
- * When the line opens with a pickup rest, bar 1 is anacrusis;
- * first comp hits land on & of beat 2 on bar 2 (ii).
- */
-export function harmonicCompStartQuarters(notes: Note[]): number {
-  return leadingPickupRestQuarters(notes) > 0 ? MEASURE_QUARTERS : 0;
 }
 
 /** Merge chain items; per-item octave overrides auto-alignment for that idiom. */

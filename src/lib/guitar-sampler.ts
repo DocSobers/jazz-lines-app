@@ -94,6 +94,7 @@ export function nylonSampleUrls(): string[] {
 export function createGuitarSampler(onload?: () => void): Sampler {
   return new Sampler({
     urls: tunedUrls(),
+    attack: 0.001,
     onload,
   });
 }

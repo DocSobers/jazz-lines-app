@@ -109,7 +109,9 @@ export default function StaffCard({
           const target = x - scroll.clientWidth * 0.35;
           scroll.scrollLeft = Math.max(0, target);
         }
-      }
+      },
+      null,
+      example.pickupBeat
     );
   };
 

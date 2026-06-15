@@ -31,6 +31,7 @@ export function fluteSampleUrls(): string[] {
 export function createFluteSampler(onload?: () => void): Sampler {
   return new Sampler({
     urls: FLUTE_URLS,
+    attack: 0.001,
     onload,
   });
 }

@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { quarterLengthSeconds } from './timing';
 
 let clickSynth: Tone.MembraneSynth | null = null;
 
@@ -15,28 +16,24 @@ function ensureClickSynth(): Tone.MembraneSynth {
 }
 
 /**
- * Count-in clicks through the pickup rest; the final click uses the exact
- * scheduled pickup onset (& of beat 4) so it aligns with the melody.
+ * Count-in: beats 1–4 downbeats, then & of beat 4 synced to melody pickup.
+ * pickupOnsetQuarters is spreadsheet StartTime (e.g. 3.67 = triplet & of 4).
  */
 export function scheduleAnacrusisCountIn(
   startTime: number,
   bpm: number,
-  pickupOnsetSeconds: number
+  pickupOnsetQuarters: number
 ): void {
-  if (pickupOnsetSeconds <= 0) return;
-
   const synth = ensureClickSynth();
-  const quarter = 60 / bpm;
+  const quarter = quarterLengthSeconds(bpm);
   const clickDur = 0.04;
-  const pickupBeat = pickupOnsetSeconds / quarter;
-  const downbeatCount = Math.floor(pickupBeat + 0.001);
 
-  for (let beat = 0; beat < downbeatCount; beat++) {
+  for (let beat = 0; beat < 4; beat++) {
     const pitch = beat === 0 ? 'C6' : 'G5';
     synth.triggerAttackRelease(pitch, clickDur, startTime + beat * quarter);
   }
 
-  synth.triggerAttackRelease('E6', clickDur, startTime + pickupOnsetSeconds);
+  synth.triggerAttackRelease('E6', clickDur, startTime + pickupOnsetQuarters * quarter);
 }
 
 export function disposeMetronome(): void {

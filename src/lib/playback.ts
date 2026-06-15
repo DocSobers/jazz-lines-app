@@ -9,14 +9,19 @@ import {
 } from './instruments';
 import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sample-cache';
 import type { WheelKey } from './keys';
-import { compInstrumentForMelody, compVolumeDb } from './comp-instruments';
+import { resolveAnacrusisTimeline, type AnacrusisTimeline } from './anacrusis';
+import { scheduleBassHits } from './bass-schedule';
+import { createBassSampler, disposeBassChain } from './bass-sampler';
+import { bassVolumeDb, compInstrumentForMelody, compVolumeDb } from './comp-instruments';
 import { scheduleCompHits } from './comp-schedule';
-import { harmonicCompStartQuarters, leadingPickupRestQuarters } from './notes';
 import { disposeMetronome, scheduleAnacrusisCountIn } from './metronome';
+import { quarterLengthSeconds, durationSeconds } from './timing';
 
 let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
 const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
+let bassPlayer: Sampler | null = null;
+let bassLoadPromise: Promise<Sampler> | null = null;
 let playbackGeneration = 0;
 let progressFrameId = 0;
 let onInterrupted: (() => void) | null = null;
@@ -63,10 +68,33 @@ async function ensurePlayer(): Promise<Sampler> {
   return loadInstrument(currentInstrumentId);
 }
 
+function loadBassPlayer(): Promise<Sampler> {
+  if (bassPlayer?.loaded) {
+    return Promise.resolve(bassPlayer);
+  }
+
+  if (bassLoadPromise) return bassLoadPromise;
+
+  bassLoadPromise = new Promise<Sampler>((resolve) => {
+    const sampler = createBassSampler(() => {
+      sampler.volume.value = bassVolumeDb();
+      bassPlayer = sampler;
+      resolve(sampler);
+    });
+  });
+
+  return bassLoadPromise;
+}
+
+function releaseBackingPlayers(): void {
+  bassPlayer?.releaseAll();
+}
+
 function releaseAllPlayers(): void {
   for (const player of Object.values(players)) {
     player?.releaseAll();
   }
+  releaseBackingPlayers();
 }
 
 export interface BackingOptions {
@@ -84,6 +112,11 @@ export function setPlaybackInstrument(id: InstrumentId): void {
 /** Load samples early to reduce first-play latency. */
 export function preloadInstrument(id: InstrumentId = currentInstrumentId): void {
   void loadInstrument(id);
+}
+
+/** Load upright bass samples when backing is enabled. */
+export function preloadBass(): void {
+  void loadBassPlayer();
 }
 
 /** Cache sample MP3s and decode all instruments in the background. */
@@ -146,13 +179,11 @@ export function initPlaybackLifecycle(interrupted: () => void): () => void {
 }
 
 function quarterSeconds(bpm: number): number {
-  Tone.getTransport().bpm.value = bpm;
-  return Tone.Time('4n').toSeconds();
+  return quarterLengthSeconds(bpm);
 }
 
 function noteSeconds(duration: string, bpm: number): number {
-  Tone.getTransport().bpm.value = bpm;
-  return Tone.Time(duration).toSeconds();
+  return durationSeconds(duration, bpm);
 }
 
 function pairFillsQuarter(a: Note, b: Note, bpm: number, quarter: number): boolean {
@@ -305,6 +336,7 @@ interface SchedulePassResult {
   startTime: number;
   schedule: ScheduledNote[];
   totalDuration: number;
+  playbackOffsetSeconds: number;
 }
 
 function schedulePass(
@@ -312,21 +344,39 @@ function schedulePass(
   notes: Note[],
   bpm: number,
   swing: SwingAmount,
-  tightStart = false
+  tightStart = false,
+  anacrusis?: AnacrusisTimeline | null
 ): SchedulePassResult {
   const schedule = buildSchedule(notes, bpm, swing);
   const leadIn = tightStart ? 0.03 : 0.15;
   const start = Tone.now() + leadIn;
+  const quarter = quarterSeconds(bpm);
+  const schedulePickup = schedule.find((n) => !n.rest)?.time ?? 0;
+  const pickupOnsetSeconds = anacrusis
+    ? anacrusis.pickupOnsetQuarters * quarter
+    : null;
+  const onsetDelta =
+    pickupOnsetSeconds != null ? pickupOnsetSeconds - schedulePickup : 0;
 
   for (const note of schedule) {
     if (!note.rest) {
-      player.triggerAttackRelease(note.pitch, note.duration, start + note.time);
+      player.triggerAttackRelease(
+        note.pitch,
+        note.duration,
+        start + note.time + onsetDelta
+      );
     }
   }
 
   const totalDuration = scheduleTotalDuration(schedule);
 
-  return { durationMs: (leadIn + totalDuration) * 1000, startTime: start, schedule, totalDuration };
+  return {
+    durationMs: (leadIn + totalDuration) * 1000,
+    startTime: start,
+    schedule,
+    totalDuration,
+    playbackOffsetSeconds: onsetDelta,
+  };
 }
 
 function schedulePassEnd(
@@ -344,13 +394,6 @@ function notesForLoopCycle(notes: Note[]): Note[] {
   return [...notes, LOOP_REPEAT_REST];
 }
 
-/** Quarter-beat time when the first sounding note begins (after any pickup rest). */
-function pickupOnsetSeconds(notes: Note[], bpm: number, swing: SwingAmount): number {
-  const schedule = buildSchedule(notes, bpm, swing);
-  const first = schedule.find((n) => !n.rest);
-  return first?.time ?? 0;
-}
-
 export async function playNotes(
   notes: Note[],
   bpm: number,
@@ -358,7 +401,8 @@ export async function playNotes(
   swing: SwingAmount = 1,
   loop = false,
   onProgress?: (progress: PlaybackProgress) => void,
-  backing?: BackingOptions | null
+  backing?: BackingOptions | null,
+  anacrusisPickupBeat?: number
 ): Promise<void> {
   stopPlayback();
   loopActive = loop;
@@ -370,13 +414,17 @@ export async function playNotes(
   let compPlayer: Sampler | null = null;
   if (backing) {
     const compId = compInstrumentForMelody(currentInstrumentId);
-    compPlayer = await loadInstrument(compId);
+    const [comp, bass] = await Promise.all([
+      loadInstrument(compId),
+      loadBassPlayer(),
+    ]);
+    compPlayer = comp;
     compPlayer.volume.value = compVolumeDb(compId);
+    bass.volume.value = bassVolumeDb();
   }
 
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
-  const harmonicStartQuarters = harmonicCompStartQuarters(notes);
-  const leadingRestQuarters = leadingPickupRestQuarters(notes);
+  const anacrusis = resolveAnacrusisTimeline(notes, anacrusisPickupBeat);
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
@@ -386,14 +434,16 @@ export async function playNotes(
     if (loop) {
       cycleNotes = notesForLoopCycle(cycleNotes);
     }
-    const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
+    const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat, anacrusis);
 
-    if (leadingRestQuarters > 0) {
-      const pickupOnset = pickupOnsetSeconds(notes, bpm, swing);
-      scheduleAnacrusisCountIn(pass.startTime, bpm, pickupOnset);
+    if (anacrusis) {
+      scheduleAnacrusisCountIn(pass.startTime, bpm, anacrusis.pickupOnsetQuarters);
     }
 
     if (backing && compPlayer) {
+      const harmonicStart = anacrusis?.harmonicStartQuarters ?? 0;
+      const gridOffset = pass.playbackOffsetSeconds;
+
       scheduleCompHits(
         compPlayer,
         backing.key,
@@ -401,8 +451,21 @@ export async function playNotes(
         swing,
         pass.startTime,
         pass.totalDuration,
-        harmonicStartQuarters
+        harmonicStart,
+        gridOffset
       );
+
+      if (bassPlayer) {
+        scheduleBassHits(
+          bassPlayer,
+          backing.key,
+          bpm,
+          pass.startTime,
+          pass.totalDuration,
+          harmonicStart,
+          gridOffset
+        );
+      }
     }
 
     startProgressTracking(
@@ -451,5 +514,9 @@ export function disposePlayback(): void {
     delete players[key];
     delete loadPromises[key];
   }
+  bassPlayer?.dispose();
+  bassPlayer = null;
+  bassLoadPromise = null;
+  disposeBassChain();
   onInterrupted = null;
 }

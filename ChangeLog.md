@@ -190,6 +190,11 @@ Changes are listed in chronological order (oldest first).
 - Clicks on beats 1–3 only, then & of beat 4 click synced to exact melody pickup time.
 - No downbeat click on beat 4 when pickup follows on the &.
 
+#### `d1a04be` — Jazz bass backing, anacrusis grid sync, and fingered bass tone
+- Unified timing grid (`timing.ts`, `anacrusis.ts`) so count-in, melody pickup, comp, and bass share one clock.
+- Full beats 1–4 count-in; melody on triplet & of 4 (`pickupBeat` 3.67); comp on triplet & of 2/4 from bar 2.
+- Fingered jazz bass on beats 1 & 3 (root / fifth) with `tonejs-instrument-bass-electric-mp3` and warm pizz envelope.
+
 ---
 
 ## Heroku Deploy Changelog

@@ -27,11 +27,13 @@ import {
   startPitchClass,
   transposeExample,
 } from './lib/notes';
+import { warmBassCache } from './lib/sample-cache';
 import {
   disposePlayback,
   initPlaybackLifecycle,
   playNotes,
   preloadAllInstruments,
+  preloadBass,
   preloadInstrument,
   setPlaybackInstrument,
   stopPlayback,
@@ -184,7 +186,12 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   }, [chain, lineNotes]);
 
   const play = useCallback(
-    async (notes: Example['notes'], loop = false, withBacking = false) => {
+    async (
+      notes: Example['notes'],
+      loop = false,
+      withBacking = false,
+      pickupBeat?: number
+    ) => {
       setPlaying(true);
       await playNotes(
         notes,
@@ -193,18 +200,19 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         swing / 100,
         loop,
         undefined,
-        withBacking ? { key: selectedKey } : null
+        withBacking ? { key: selectedKey } : null,
+        pickupBeat
       );
     },
     [bpm, swing, selectedKey]
   );
 
   const handlePlayExample = (example: Example) => {
-    void play(prependPickup(example.notes, example.pickupBeat));
+    void play(prependPickup(example.notes, example.pickupBeat), false, false, example.pickupBeat);
   };
 
   const handlePlayDraft = (notes: Note[], pickupBeat?: number) => {
-    void play(prependPickup(notes, pickupBeat));
+    void play(prependPickup(notes, pickupBeat), false, false, pickupBeat);
   };
 
   const syncChainExample = (example: Example) => {
@@ -247,7 +255,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handlePlayChain = () => {
     if (lineNotes.length === 0) return;
-    void play(lineNotes, lineLoop, backingEnabled);
+    void play(lineNotes, lineLoop, backingEnabled, chain[0]?.example.pickupBeat);
   };
 
   const handleAdd = (example: Example) => {
@@ -301,6 +309,8 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   useEffect(() => {
     if (!backingEnabled) return;
     preloadInstrument(compInstrumentForMelody(instrument));
+    preloadBass();
+    void warmBassCache();
   }, [backingEnabled, instrument]);
 
   useEffect(() => {
@@ -449,8 +459,8 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
             aria-pressed={backingEnabled}
             title={
               backingEnabled
-                ? `${compInstrumentLabel(instrument)} · ${iiViProgressionLabel(selectedKey)}`
-                : `${compInstrumentLabel(instrument)} over fixed ii–V–I in ${selectedKey}`
+                ? `Jazz bass + ${compInstrumentLabel(instrument)} · ${iiViProgressionLabel(selectedKey)}`
+                : `Jazz bass on 1 & 3 + ${compInstrumentLabel(instrument)} · ii–V–I in ${selectedKey}`
             }
           >
             Backing

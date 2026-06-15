@@ -25,6 +25,7 @@
     "react-router-dom": "^7.17.0",
     "svix": "^1.62.0",
     "tone": "^15.1.22",
+    "tonejs-instrument-bass-electric-mp3": "^1.1.2",
     "tonejs-instrument-flute-mp3": "^1.1.2",
     "tonejs-instrument-guitar-nylon-mp3": "^1.1.1",
     "tonejs-instrument-piano-mp3": "^1.1.2",
