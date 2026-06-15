@@ -155,6 +155,10 @@ Changes are listed in chronological order (oldest first).
 #### `8671bf0` — Fix ChangeLog commit hash for the changelog entry
 - Correct the self-referential commit hash in `ChangeLog.md` after amend changed the SHA.
 
+#### `b2202f5` — Update ChangeLog entries for changelog commits and refine maintenance rule
+- Record `baf5dc1` and `8671bf0` in the change history.
+- Clarify in the Cursor rule that changelog updates should be a separate commit (not amend).
+
 ---
 
 ## Heroku Deploy Changelog
@@ -201,4 +205,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (release v26, commit `8671bf0`)*
+*Last updated: 2026-06-15 (release v26, commit `b2202f5`)*
