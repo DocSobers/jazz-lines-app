@@ -7,9 +7,18 @@ interface StaffCardProps {
   onClose: () => void;
   onPlay: () => void;
   playing?: boolean;
+  hint?: string;
+  className?: string;
 }
 
-export default function StaffCard({ example, onClose, onPlay, playing = false }: StaffCardProps) {
+export default function StaffCard({
+  example,
+  onClose,
+  onPlay,
+  playing = false,
+  hint = 'Treble clef · 4/4 · swung eighths',
+  className = '',
+}: StaffCardProps) {
   const staffRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,7 +30,7 @@ export default function StaffCard({ example, onClose, onPlay, playing = false }:
   return (
     <div className="staff-backdrop" onClick={onClose} role="presentation">
       <div
-        className="staff-card"
+        className={`staff-card${className ? ` ${className}` : ''}`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -31,7 +40,7 @@ export default function StaffCard({ example, onClose, onPlay, playing = false }:
           <div>
             <p className="staff-card__eyebrow">{example.section}</p>
             <h2 id="staff-title">{example.label}</h2>
-            <p className="staff-card__hint">Treble clef · 4/4 · swung eighths</p>
+            <p className="staff-card__hint">{hint}</p>
           </div>
           <button
             type="button"

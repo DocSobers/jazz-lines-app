@@ -128,6 +128,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [edits, setEdits] = useState<ExampleEdits>(loadEdits);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [showLineStaff, setShowLineStaff] = useState(false);
   const [chain, setChain] = useState<ChainItem[]>([]);
   const [bpm, setBpm] = useState(120);
   const [swing, setSwing] = useState(100);
@@ -166,6 +167,17 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   );
 
   const lineNotes = useMemo(() => flattenChain(chain), [chain]);
+
+  const lineStaffExample = useMemo((): Example | null => {
+    if (chain.length === 0 || lineNotes.length === 0) return null;
+    return {
+      id: '__line__',
+      section: 'Your line',
+      number: '',
+      label: chain.map((item) => item.example.label).join(' · '),
+      notes: lineNotes,
+    };
+  }, [chain, lineNotes]);
 
   const play = useCallback(
     async (notes: Example['notes'], loop = false) => {
@@ -268,6 +280,10 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   }, [instrument]);
 
   useEffect(() => {
+    if (chain.length === 0) setShowLineStaff(false);
+  }, [chain.length]);
+
+  useEffect(() => {
     if (demoMode) {
       setChain((prev) => {
         const isDemoLine =
@@ -300,6 +316,16 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     stopPlayback();
     setPlaying(false);
   }, [lineNotes, bpm, swing, transposeSemitones, instrument]);
+
+  const openIdiomStaff = (id: string) => {
+    setShowLineStaff(false);
+    setStaffId(id);
+  };
+
+  const openLineStaff = () => {
+    setStaffId(null);
+    setShowLineStaff(true);
+  };
 
   const chainEnd =
     chain.length > 0 ? endPitchClass(chain[chain.length - 1].example) : null;
@@ -410,6 +436,15 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           <h2>Your line</h2>
           {chain.length > 0 && (
             <div className="chain-panel__actions">
+              <button
+                type="button"
+                className="btn btn--ghost btn--clef btn--clef--line"
+                onClick={openLineStaff}
+                aria-label="View full line on staff"
+                data-tooltip="View entire line on the staff"
+              >
+                𝄞
+              </button>
               <button type="button" className="btn btn--ghost" onClick={handleRemoveLast}>
                 Undo
               </button>
@@ -505,7 +540,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                 key={example.id}
                 example={example}
                 onPlay={() => handlePlayExample(example)}
-                onStaff={() => setStaffId(example.id)}
+                onStaff={() => openIdiomStaff(example.id)}
                 onEdit={() => setEditingId(example.id)}
                 onAdd={() => handleAdd(example)}
                 canAdd
@@ -545,7 +580,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                     key={example.id}
                     example={example}
                     onPlay={() => handlePlayExample(example)}
-                    onStaff={() => setStaffId(example.id)}
+                    onStaff={() => openIdiomStaff(example.id)}
                     onEdit={() => setEditingId(example.id)}
                     onAdd={() => handleAdd(example)}
                     canAdd={!inChain}
@@ -569,6 +604,17 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           </p>
         )}
       </SiteFooter>
+
+      {showLineStaff && lineStaffExample && (
+        <StaffCard
+          example={lineStaffExample}
+          className="staff-card--line"
+          hint={`${chain.length} idiom${chain.length !== 1 ? 's' : ''} · Treble clef · 4/4 · swung eighths`}
+          onClose={() => setShowLineStaff(false)}
+          onPlay={handlePlayChain}
+          playing={playing}
+        />
+      )}
 
       {staffExample && (
         <StaffCard

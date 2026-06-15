@@ -710,6 +710,14 @@ a.btn {
   overflow: visible;
 }
 
+.btn--clef--line {
+  margin-left: 0;
+  font-size: 2.6rem;
+  line-height: 1;
+  min-height: 3.75rem;
+  padding: 0.45rem 1rem;
+}
+
 .btn--clef[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -762,6 +770,16 @@ a.btn {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 24px 48px var(--shadow);
+}
+
+.staff-card--line {
+  width: min(960px, 100%);
+  max-height: min(90vh, 560px);
+}
+
+.staff-card--line .staff-card__header h2 {
+  font-size: 1.05rem;
+  line-height: 1.35;
 }
 
 .staff-card__header {
