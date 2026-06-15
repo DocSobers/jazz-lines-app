@@ -27,16 +27,12 @@ function slotXForScheduleIndex(
   return x0 + frac * (x1 - x0);
 }
 
-/** Map audio elapsed time to staff notation time (handles loop repeat pickup skip). */
+/** Map audio elapsed time to staff notation time. */
 export function toStaffElapsed(progress: {
   elapsed: number;
   contentDuration: number;
-  leadingSkip: number;
-  isRepeat: boolean;
 }): number {
-  const { elapsed, contentDuration, leadingSkip, isRepeat } = progress;
-  const adjusted = isRepeat ? elapsed + leadingSkip : elapsed;
-  return Math.min(Math.max(0, adjusted), contentDuration);
+  return Math.min(Math.max(0, progress.elapsed), progress.contentDuration);
 }
 
 /** Map elapsed playback time to an x position on the rendered staff. */

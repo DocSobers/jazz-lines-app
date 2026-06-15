@@ -12,7 +12,6 @@ import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sam
 let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
 const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
-let scheduledIds: number[] = [];
 let playbackGeneration = 0;
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
@@ -216,26 +215,10 @@ function scheduleTotalDuration(schedule: ScheduledNote[]): number {
   return schedule.reduce((max, note) => Math.max(max, note.time + note.duration), 0);
 }
 
-export function leadingRestDuration(
-  notes: Note[],
-  bpm: number,
-  swing: SwingAmount
-): number {
-  const leading: Note[] = [];
-  for (const note of notes) {
-    if (!note.rest) break;
-    leading.push(note);
-  }
-  if (leading.length === 0) return 0;
-  return scheduleTotalDuration(buildSchedule(leading, bpm, swing));
-}
-
 export interface PlaybackProgress {
   elapsed: number;
   totalDuration: number;
   contentDuration: number;
-  leadingSkip: number;
-  isRepeat: boolean;
 }
 
 function startProgressTracking(
@@ -243,8 +226,6 @@ function startProgressTracking(
   startTime: number,
   totalDuration: number,
   contentDuration: number,
-  leadingSkip: number,
-  isRepeat: boolean,
   onProgress?: (progress: PlaybackProgress) => void
 ): void {
   cancelProgressTracking();
@@ -256,8 +237,6 @@ function startProgressTracking(
       elapsed: Math.min(Math.max(0, time - startTime), totalDuration),
       totalDuration,
       contentDuration,
-      leadingSkip,
-      isRepeat,
     });
   };
 
@@ -292,7 +271,8 @@ function schedulePass(
   tightStart = false
 ): SchedulePassResult {
   const schedule = buildSchedule(notes, bpm, swing);
-  const start = Tone.now() + (tightStart ? 0.03 : 0.15);
+  const leadIn = tightStart ? 0.03 : 0.15;
+  const start = Tone.now() + leadIn;
 
   for (const note of schedule) {
     if (!note.rest) {
@@ -301,17 +281,19 @@ function schedulePass(
   }
 
   const totalDuration = scheduleTotalDuration(schedule);
-  const durationMs = Math.max(0, (start + totalDuration - Tone.now()) * 1000);
 
-  return { durationMs, startTime: start, schedule, totalDuration };
+  return { durationMs: (leadIn + totalDuration) * 1000, startTime: start, schedule, totalDuration };
 }
 
-function skipLeadingRests(notes: Note[]): Note[] {
-  let i = 0;
-  while (i < notes.length && notes[i].rest) {
-    i += 1;
-  }
-  return i === 0 ? notes : notes.slice(i);
+function schedulePassEnd(
+  generation: number,
+  endTime: number,
+  onEnd: () => void
+): void {
+  Tone.Draw.schedule(() => {
+    if (generation !== playbackGeneration) return;
+    onEnd();
+  }, endTime);
 }
 
 function notesForLoopCycle(notes: Note[]): Note[] {
@@ -332,12 +314,12 @@ export async function playNotes(
 
   const player = await ensurePlayer();
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
-  const leadingSkip = leadingRestDuration(notes, bpm, swing);
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
-    activePlayer()?.releaseAll();
-    let cycleNotes = isRepeat ? skipLeadingRests(notes) : notes;
+    if (isRepeat) activePlayer()?.releaseAll();
+
+    let cycleNotes = notes;
     if (loop) {
       cycleNotes = notesForLoopCycle(cycleNotes);
     }
@@ -347,12 +329,10 @@ export async function playNotes(
       pass.startTime,
       pass.totalDuration,
       contentDuration,
-      leadingSkip,
-      isRepeat,
       onProgress
     );
-    const id = window.setTimeout(() => {
-      scheduledIds = scheduledIds.filter((scheduledId) => scheduledId !== id);
+
+    schedulePassEnd(generation, pass.startTime + pass.totalDuration, () => {
       if (generation !== playbackGeneration) return;
       if (loopActive) {
         runPass(true);
@@ -362,13 +342,10 @@ export async function playNotes(
           elapsed: pass.totalDuration,
           totalDuration: pass.totalDuration,
           contentDuration,
-          leadingSkip,
-          isRepeat,
         });
         onComplete?.();
       }
-    }, pass.durationMs);
-    scheduledIds.push(id);
+    });
   };
 
   runPass(false);
@@ -378,8 +355,6 @@ export function stopPlayback(): void {
   loopActive = false;
   playbackGeneration += 1;
   cancelProgressTracking();
-  scheduledIds.forEach((id) => window.clearTimeout(id));
-  scheduledIds = [];
   activePlayer()?.releaseAll();
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
