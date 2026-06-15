@@ -431,7 +431,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
               {chain.map((item, i) => (
                 <li key={`${item.example.id}-${i}`}>
                   <span className="chain-list__index">{i + 1}</span>
-                  <span className="chain-list__label">{item.example.label}</span>
+                  <div className="chain-list__label-row">
+                    <span className="chain-list__label">{item.example.label}</span>
+                    <span className="chain-list__pitches">
+                      {formatPitchClass(startPitchClass(item.example))} →{' '}
+                      {formatPitchClass(endPitchClass(item.example))}
+                    </span>
+                  </div>
                   <div className="octave-control octave-control--inline" aria-label="Octave">
                     <button
                       type="button"
