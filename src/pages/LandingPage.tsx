@@ -18,7 +18,8 @@ export default function LandingPage({ clerkEnabled }: LandingPageProps) {
         <JazzInstruments />
 
         <p className="landing__eyebrow">
-          Mel Bay · Sid Jacobs · Joe Pass · Wes Montgomery · George Benson
+          Mel Bay Publishing · Wes Montgomery · George Benson · Joe Pass · Sid Jacobs · Chuck
+          Loeb · Frank Gambale · Norman Brown
         </p>
         <h1 className="landing__title">Jazz Lines</h1>
         <p className="landing__lede">
@@ -49,8 +50,9 @@ export default function LandingPage({ clerkEnabled }: LandingPageProps) {
           <h2>Speak the language</h2>
           <p>
             Jazz improvisation is built from reusable phrases — the ii–V–I shapes,
-            resolutions, and major-key endings that players like Joe Pass, Wes
-            Montgomery, George Benson, and Sid Jacobs wove into countless choruses.
+            resolutions, and major-key endings that players like Wes Montgomery,
+            George Benson, Joe Pass, Sid Jacobs, Chuck Loeb, Frank Gambale, and Norman Brown
+            wove into countless choruses.
             This app lets you hear, chain, and internalize those
             idioms one phrase at a time.
           </p>

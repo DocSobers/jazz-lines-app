@@ -27,7 +27,7 @@ export default function AboutPage({ clerkEnabled }: AboutPageProps) {
           <p>
             Jazz Lines is a practice tool for hearing, chaining, and internalizing
             ii–V–I vocabulary — the short phrases that make up the jazz language on
-            the bandstand. The idioms come from Mel Bay&apos;s{' '}
+            the bandstand. The idioms come from Mel Bay Publishing&apos;s{' '}
             <em>Complete Book of Jazz Guitar Lines &amp; Phrases</em> by Sid Jacobs.
           </p>
           <p>
