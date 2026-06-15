@@ -14,17 +14,22 @@ function ensureClickSynth(): Tone.MembraneSynth {
   return clickSynth;
 }
 
-/** Quarter-note clicks for one anacrusis/count-in bar (beats 1–4). */
+/**
+ * Click quarter-note beats during the pickup rest only — stops when the
+ * anacrusis melody enters (not a fixed four-beat count-in).
+ */
 export function scheduleAnacrusisCountIn(
   startTime: number,
   bpm: number,
-  measureQuarters = 4
+  leadingRestQuarters: number
 ): void {
+  if (leadingRestQuarters <= 0) return;
+
   const synth = ensureClickSynth();
   const quarter = 60 / bpm;
   const clickDur = 0.04;
 
-  for (let beat = 0; beat < measureQuarters; beat++) {
+  for (let beat = 0; beat + 0.001 < leadingRestQuarters; beat++) {
     const pitch = beat === 0 ? 'C6' : 'G5';
     synth.triggerAttackRelease(pitch, clickDur, startTime + beat * quarter);
   }

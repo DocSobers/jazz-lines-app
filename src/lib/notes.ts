@@ -137,19 +137,23 @@ export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
 
 const MEASURE_QUARTERS = 4;
 
-/**
- * Quarter-beat delay before ii–V–I comp should begin.
- * When the line opens with a pickup rest, bar 1 is anacrusis (count-in);
- * first comp hits land on & of beat 2 on bar 2 (ii).
- */
-export function harmonicCompStartQuarters(notes: Note[]): number {
+/** Quarter-beat length of the leading pickup rest, or 0 when none. */
+export function leadingPickupRestQuarters(notes: Note[]): number {
   const first = notes[0];
   if (!first?.rest) return 0;
   const match = first.duration.match(/^4n \* ([\d.]+)$/);
   if (!match) return 0;
   const leadingRest = Number(match[1]);
-  if (leadingRest <= 0) return 0;
-  return MEASURE_QUARTERS;
+  return leadingRest > 0 ? leadingRest : 0;
+}
+
+/**
+ * Quarter-beat delay before ii–V–I comp should begin.
+ * When the line opens with a pickup rest, bar 1 is anacrusis;
+ * first comp hits land on & of beat 2 on bar 2 (ii).
+ */
+export function harmonicCompStartQuarters(notes: Note[]): number {
+  return leadingPickupRestQuarters(notes) > 0 ? MEASURE_QUARTERS : 0;
 }
 
 /** Merge chain items; per-item octave overrides auto-alignment for that idiom. */

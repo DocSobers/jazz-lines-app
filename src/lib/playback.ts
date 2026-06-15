@@ -11,7 +11,7 @@ import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sam
 import type { WheelKey } from './keys';
 import { compInstrumentForMelody, compVolumeDb } from './comp-instruments';
 import { scheduleCompHits } from './comp-schedule';
-import { harmonicCompStartQuarters } from './notes';
+import { harmonicCompStartQuarters, leadingPickupRestQuarters } from './notes';
 import { disposeMetronome, scheduleAnacrusisCountIn } from './metronome';
 
 let currentInstrumentId: InstrumentId = 'nylon';
@@ -369,6 +369,7 @@ export async function playNotes(
 
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
   const harmonicStartQuarters = harmonicCompStartQuarters(notes);
+  const leadingRestQuarters = leadingPickupRestQuarters(notes);
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
@@ -380,8 +381,8 @@ export async function playNotes(
     }
     const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
 
-    if (harmonicStartQuarters > 0) {
-      scheduleAnacrusisCountIn(pass.startTime, bpm, harmonicStartQuarters);
+    if (leadingRestQuarters > 0) {
+      scheduleAnacrusisCountIn(pass.startTime, bpm, leadingRestQuarters);
     }
 
     if (backing && compPlayer) {
