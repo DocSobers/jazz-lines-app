@@ -831,6 +831,23 @@ a.btn {
   padding: 1rem 1.25rem 1rem;
 }
 
+.staff-card__notation-wrap {
+  position: relative;
+  display: inline-block;
+  min-width: min(100%, 320px);
+}
+
+.staff-playhead {
+  position: absolute;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  border-radius: 1px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 65%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .staff-card__footer {
   display: flex;
   flex-wrap: wrap;

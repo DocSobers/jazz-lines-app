@@ -8,6 +8,7 @@ import {
   Voice,
 } from 'vexflow';
 import type { Example, Note } from '../types';
+import type { StaffPlayheadLayout } from './staff-playhead';
 
 const BEATS_BY_DURATION: Record<string, number> = {
   '8t': 0.33,
@@ -231,12 +232,17 @@ function measureToTickables(measureNotes: Note[]): StaveNote[] {
   return measureNotes.flatMap((note) => noteToStaveNotes(note));
 }
 
-export function renderExampleStaff(container: HTMLDivElement, example: Example): void {
+export function renderExampleStaff(
+  container: HTMLDivElement,
+  example: Example
+): StaffPlayheadLayout {
   container.replaceChildren();
 
   const measures = buildStaffMeasures(example);
   const width = Math.max(320, STAVE_X * 2 + measures.length * STAVE_WIDTH);
   const height = 160;
+  const playheadTop = STAVE_Y - 12;
+  const playheadHeight = 88;
 
   const renderer = new Renderer(container, Renderer.Backends.SVG);
   renderer.resize(width, height);
@@ -244,6 +250,8 @@ export function renderExampleStaff(container: HTMLDivElement, example: Example):
   const ink = staffInkColor();
   context.setFillStyle(ink);
   context.setStrokeStyle(ink);
+
+  const slots: StaffPlayheadLayout['slots'] = [];
 
   measures.forEach((measureNotes, index) => {
     const tickables = measureToTickables(measureNotes);
@@ -274,5 +282,11 @@ export function renderExampleStaff(container: HTMLDivElement, example: Example):
 
     voice.draw(context, stave);
     beams.forEach((beam) => beam.setContext(context).draw());
+
+    tickables.forEach((tickable) => {
+      slots.push({ x: tickable.getAbsoluteX() });
+    });
   });
+
+  return { slots, top: playheadTop, height: playheadHeight };
 }

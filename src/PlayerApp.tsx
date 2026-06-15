@@ -648,20 +648,25 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       {showLineStaff && lineStaffExample && (
         <StaffCard
           example={lineStaffExample}
+          playbackNotes={lineNotes}
+          bpm={bpm}
+          swing={swing}
+          loop={lineLoop}
           className="staff-card--line"
           hint={`${chain.length} idiom${chain.length !== 1 ? 's' : ''} · Treble clef · 4/4 · swung eighths`}
           onClose={() => setShowLineStaff(false)}
-          onPlay={handlePlayChain}
-          playing={playing}
+          onPlayingChange={setPlaying}
         />
       )}
 
       {staffExample && (
         <StaffCard
           example={staffExample}
+          playbackNotes={prependPickup(staffExample.notes, staffExample.pickupBeat)}
+          bpm={bpm}
+          swing={swing}
           onClose={() => setStaffId(null)}
-          onPlay={() => handlePlayExample(staffExample)}
-          playing={playing}
+          onPlayingChange={setPlaying}
         />
       )}
 

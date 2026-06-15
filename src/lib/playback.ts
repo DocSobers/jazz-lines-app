@@ -13,6 +13,8 @@ let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
 const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
 let scheduledIds: number[] = [];
+let progressFrameId = 0;
+let playbackGeneration = 0;
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
 
@@ -155,7 +157,9 @@ interface ScheduledNote {
   duration: number;
 }
 
-function buildSchedule(
+export type { ScheduledNote };
+
+export function buildSchedule(
   notes: Note[],
   bpm: number,
   swing: SwingAmount
@@ -205,13 +209,52 @@ function buildSchedule(
   return scheduled;
 }
 
+function cancelProgressTracking(): void {
+  if (progressFrameId) {
+    cancelAnimationFrame(progressFrameId);
+    progressFrameId = 0;
+  }
+}
+
+function scheduleTotalDuration(schedule: ScheduledNote[]): number {
+  return schedule.reduce((max, note) => Math.max(max, note.time + note.duration), 0);
+}
+
+function startProgressTracking(
+  generation: number,
+  startTime: number,
+  totalDuration: number,
+  onProgress?: (elapsed: number, total: number) => void
+): void {
+  cancelProgressTracking();
+  if (!onProgress || totalDuration <= 0) return;
+
+  const tick = () => {
+    if (generation !== playbackGeneration) return;
+    const elapsed = Math.max(0, Tone.now() - startTime);
+    onProgress(Math.min(elapsed, totalDuration), totalDuration);
+    if (elapsed < totalDuration) {
+      progressFrameId = requestAnimationFrame(tick);
+    }
+  };
+
+  progressFrameId = requestAnimationFrame(tick);
+}
+
+interface SchedulePassResult {
+  durationMs: number;
+  startTime: number;
+  schedule: ScheduledNote[];
+  totalDuration: number;
+}
+
 function schedulePass(
   player: Sampler,
   notes: Note[],
   bpm: number,
   swing: SwingAmount,
   tightStart = false
-): number {
+): SchedulePassResult {
   const schedule = buildSchedule(notes, bpm, swing);
   const start = Tone.now() + (tightStart ? 0.03 : 0.15);
 
@@ -221,12 +264,10 @@ function schedulePass(
     }
   }
 
-  const endTime = schedule.reduce(
-    (max, note) => Math.max(max, note.time + note.duration),
-    0
-  );
+  const totalDuration = scheduleTotalDuration(schedule);
+  const durationMs = Math.max(0, (start + totalDuration - Tone.now()) * 1000);
 
-  return Math.max(0, (start + endTime - Tone.now()) * 1000);
+  return { durationMs, startTime: start, schedule, totalDuration };
 }
 
 function skipLeadingRests(notes: Note[]): Note[] {
@@ -246,28 +287,35 @@ export async function playNotes(
   bpm: number,
   onComplete?: () => void,
   swing: SwingAmount = 1,
-  loop = false
+  loop = false,
+  onProgress?: (elapsed: number, total: number) => void
 ): Promise<void> {
   stopPlayback();
   loopActive = loop;
+  const generation = ++playbackGeneration;
 
   const player = await ensurePlayer();
 
   const runPass = (isRepeat = false) => {
+    if (generation !== playbackGeneration) return;
     activePlayer()?.releaseAll();
     let cycleNotes = isRepeat ? skipLeadingRests(notes) : notes;
     if (loop) {
       cycleNotes = notesForLoopCycle(cycleNotes);
     }
-    const totalMs = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
+    const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat);
+    startProgressTracking(generation, pass.startTime, pass.totalDuration, onProgress);
     const id = window.setTimeout(() => {
       scheduledIds = scheduledIds.filter((scheduledId) => scheduledId !== id);
+      if (generation !== playbackGeneration) return;
       if (loopActive) {
         runPass(true);
       } else {
+        cancelProgressTracking();
+        onProgress?.(pass.totalDuration, pass.totalDuration);
         onComplete?.();
       }
-    }, totalMs);
+    }, pass.durationMs);
     scheduledIds.push(id);
   };
 
@@ -276,6 +324,8 @@ export async function playNotes(
 
 export function stopPlayback(): void {
   loopActive = false;
+  playbackGeneration += 1;
+  cancelProgressTracking();
   scheduledIds.forEach((id) => window.clearTimeout(id));
   scheduledIds = [];
   activePlayer()?.releaseAll();
