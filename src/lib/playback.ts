@@ -13,6 +13,7 @@ let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
 const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
 let playbackGeneration = 0;
+let progressFrameId = 0;
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
 
@@ -157,6 +158,41 @@ interface ScheduledNote {
 
 export type { ScheduledNote };
 
+/** One playback-schedule entry paired with its source note. */
+export type ScheduleNoteGroup = {
+  entry: ScheduledNote;
+  note: Note;
+};
+
+export function scheduleNoteGroups(
+  notes: Note[],
+  bpm: number,
+  swing: SwingAmount
+): ScheduleNoteGroup[] {
+  const schedule = buildSchedule(notes, bpm, swing);
+  const groups: ScheduleNoteGroup[] = [];
+  const quarter = quarterSeconds(bpm);
+  let schedIdx = 0;
+  let i = 0;
+
+  while (i < notes.length && schedIdx < schedule.length) {
+    const current = notes[i];
+    const next = notes[i + 1];
+
+    if (swing > 0 && next && pairFillsQuarter(current, next, bpm, quarter)) {
+      groups.push({ entry: schedule[schedIdx++], note: current });
+      groups.push({ entry: schedule[schedIdx++], note: next });
+      i += 2;
+      continue;
+    }
+
+    groups.push({ entry: schedule[schedIdx++], note: current });
+    i += 1;
+  }
+
+  return groups;
+}
+
 export function buildSchedule(
   notes: Note[],
   bpm: number,
@@ -208,12 +244,18 @@ export function buildSchedule(
 }
 
 function cancelProgressTracking(): void {
+  if (progressFrameId) {
+    cancelAnimationFrame(progressFrameId);
+    progressFrameId = 0;
+  }
   Tone.Draw.cancel(0);
 }
 
 function scheduleTotalDuration(schedule: ScheduledNote[]): number {
   return schedule.reduce((max, note) => Math.max(max, note.time + note.duration), 0);
 }
+
+export { scheduleTotalDuration };
 
 export interface PlaybackProgress {
   elapsed: number;
@@ -231,29 +273,20 @@ function startProgressTracking(
   cancelProgressTracking();
   if (!onProgress || totalDuration <= 0) return;
 
-  const emit = (time: number) => {
+  const tick = () => {
     if (generation !== playbackGeneration) return;
+    const elapsed = Math.max(0, Tone.now() - startTime);
     onProgress({
-      elapsed: Math.min(Math.max(0, time - startTime), totalDuration),
+      elapsed: Math.min(elapsed, totalDuration),
       totalDuration,
       contentDuration,
     });
+    if (elapsed < totalDuration) {
+      progressFrameId = requestAnimationFrame(tick);
+    }
   };
 
-  const scheduleTick = (drawTime: number) => {
-    Tone.Draw.schedule(() => {
-      if (generation !== playbackGeneration) return;
-      emit(drawTime);
-      const elapsed = drawTime - startTime;
-      if (elapsed < totalDuration) {
-        scheduleTick(drawTime + 1 / 60);
-      } else {
-        emit(startTime + totalDuration);
-      }
-    }, drawTime);
-  };
-
-  scheduleTick(startTime);
+  progressFrameId = requestAnimationFrame(tick);
 }
 
 interface SchedulePassResult {

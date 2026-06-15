@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { renderExampleStaff } from '../lib/notation';
 import { playNotes, stopPlayback } from '../lib/playback';
-import { playheadX, staffPlayheadElapsed, type StaffPlayheadLayout } from '../lib/staff-playhead';
+import {
+  attachSlotTimes,
+  playheadX,
+  staffPlayheadElapsed,
+  type StaffPlayheadLayout,
+} from '../lib/staff-playhead';
 import type { Example, Note } from '../types';
 
 interface StaffCardProps {
@@ -13,6 +18,18 @@ interface StaffCardProps {
   onPlayingChange?: (playing: boolean) => void;
   hint?: string;
   className?: string;
+}
+
+function buildTimedLayout(
+  container: HTMLDivElement,
+  example: Example,
+  playbackNotes: Note[],
+  bpm: number,
+  swing: number
+): StaffPlayheadLayout {
+  const rendered = renderExampleStaff(container, example);
+  const timed = attachSlotTimes(rendered.slots, playbackNotes, bpm, swing);
+  return { ...rendered, slots: timed.slots, contentDuration: timed.contentDuration };
 }
 
 export default function StaffCard({
@@ -28,6 +45,7 @@ export default function StaffCard({
   const staffRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<StaffPlayheadLayout | null>(null);
+  const swingAmount = swing / 100;
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const [playheadPosition, setPlayheadPosition] = useState<number | null>(null);
@@ -44,9 +62,9 @@ export default function StaffCard({
   useEffect(() => {
     const el = staffRef.current;
     if (!el) return;
-    layoutRef.current = renderExampleStaff(el, example);
+    layoutRef.current = buildTimedLayout(el, example, playbackNotes, bpm, swingAmount);
     setPlayheadPosition(null);
-  }, [example, playbackNotes, bpm, swing]);
+  }, [example, playbackNotes, bpm, swingAmount]);
 
   useEffect(() => {
     return () => {
@@ -63,24 +81,28 @@ export default function StaffCard({
 
   const handlePlay = () => {
     if (playing) return;
-    const layout = layoutRef.current;
+    const el = staffRef.current;
+    if (!el) return;
+    const layout = buildTimedLayout(el, example, playbackNotes, bpm, swingAmount);
+    layoutRef.current = layout;
     setPlaybackState(true);
-    setPlayheadPosition(layout?.slots[0]?.x ?? 0);
+    setPlayheadPosition(layout.slots[0]?.x ?? 0);
 
     void playNotes(
       playbackNotes,
       bpm,
       () => setPlaybackState(false),
-      swing / 100,
+      swingAmount,
       loop,
       (progress) => {
         if (!layout || layout.slots.length === 0) return;
-        const contentElapsed = staffPlayheadElapsed(
+        const lineElapsed = staffPlayheadElapsed(
           progress.elapsed,
           progress.contentDuration,
-          loop
+          loop,
+          progress.totalDuration
         );
-        const x = playheadX(layout, contentElapsed, progress.contentDuration);
+        const x = playheadX(layout, lineElapsed);
         setPlayheadPosition(x);
         const scroll = scrollRef.current;
         if (scroll) {

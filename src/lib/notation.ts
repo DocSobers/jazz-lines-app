@@ -155,6 +155,11 @@ function noteToStaveNotes(note: Note): StaveNote[] {
   return [staveNote];
 }
 
+/** How many staff symbols one logical note becomes (rests may split). */
+export function tickableCountForNote(note: Note): number {
+  return noteToStaveNotes(note).length;
+}
+
 /** Notes that complete the pickup/anacrusis measure (actual beat time). */
 function pickupMeasureNotes(notes: Note[], pickupBeat: number): Note[] {
   const barNotes: Note[] = [];
@@ -251,7 +256,7 @@ export function renderExampleStaff(
   context.setFillStyle(ink);
   context.setStrokeStyle(ink);
 
-  const slots: StaffPlayheadLayout['slots'] = [];
+  const slots: { x: number }[] = [];
 
   measures.forEach((measureNotes, index) => {
     const tickables = measureToTickables(measureNotes);
@@ -288,5 +293,5 @@ export function renderExampleStaff(
     });
   });
 
-  return { slots, top: playheadTop, height: playheadHeight };
+  return { slots: slots.map((s) => ({ ...s, time: 0 })), top: playheadTop, height: playheadHeight, contentDuration: 0 };
 }
