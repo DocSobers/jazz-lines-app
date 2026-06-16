@@ -20,3 +20,18 @@ export function compVolumeDb(instrument: InstrumentId): number {
 export function bassVolumeDb(): number {
   return -2;
 }
+
+/** Jazz drum kit under the comp — hi-hat and ride. */
+export function drumVolumeDb(): number {
+  return -6;
+}
+
+/** Closed hi-hat sock on 2 & 4. */
+export function hiHatVolumeDb(): number {
+  return -14;
+}
+
+/** Ride jazz pattern — bell/body under the hi-hat. */
+export function rideVolumeDb(): number {
+  return -9;
+}

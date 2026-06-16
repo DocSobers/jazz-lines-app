@@ -4,7 +4,6 @@ import type { Note } from '../types';
 import {
   createInstrumentSampler,
   INSTRUMENTS,
-  instrumentVolume,
   type InstrumentId,
 } from './instruments';
 import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sample-cache';
@@ -12,8 +11,20 @@ import type { WheelKey } from './keys';
 import { resolveAnacrusisTimeline, type AnacrusisTimeline } from './anacrusis';
 import { scheduleBassHits } from './bass-schedule';
 import { createBassSampler, disposeBassChain } from './bass-sampler';
-import { bassVolumeDb, compInstrumentForMelody, compVolumeDb } from './comp-instruments';
+import { compInstrumentForMelody } from './comp-instruments';
+import {
+  bassMixerVolumeDb,
+  compMixerVolumeDb,
+  DEFAULT_MIXER_LEVELS,
+  hiHatMixerVolumeDb,
+  melodyVolumeDb,
+  rideMixerVolumeDb,
+  type MixerLevels,
+} from './mixer';
+import { loadMixerDefaults } from './mixer-prefs';
 import { scheduleCompHits } from './comp-schedule';
+import { createDrumKit, disposeDrumChains, disposeDrumKit, type DrumKit } from './drum-sampler';
+import { scheduleDrumHits } from './drum-schedule';
 import { disposeMetronome, scheduleAnacrusisCountIn } from './metronome';
 import { quarterLengthSeconds, durationSeconds } from './timing';
 
@@ -22,10 +33,42 @@ const players: Partial<Record<InstrumentId, Sampler>> = {};
 const loadPromises: Partial<Record<InstrumentId, Promise<Sampler>>> = {};
 let bassPlayer: Sampler | null = null;
 let bassLoadPromise: Promise<Sampler> | null = null;
+let drumKit: DrumKit | null = null;
+let drumLoadPromise: Promise<DrumKit> | null = null;
 let playbackGeneration = 0;
 let progressFrameId = 0;
 let onInterrupted: (() => void) | null = null;
 let loopActive = false;
+let mixerLevels: MixerLevels =
+  typeof localStorage !== 'undefined' ? loadMixerDefaults() : { ...DEFAULT_MIXER_LEVELS };
+
+function applyMixerVolumes(): void {
+  const melodyPlayer = players[currentInstrumentId];
+  if (melodyPlayer) {
+    melodyPlayer.volume.value = melodyVolumeDb(currentInstrumentId, mixerLevels.melody);
+  }
+
+  const compId = compInstrumentForMelody(currentInstrumentId);
+  const compPlayer = players[compId];
+  if (compPlayer) {
+    compPlayer.volume.value = compMixerVolumeDb(compId, mixerLevels.comp);
+  }
+
+  if (bassPlayer) {
+    bassPlayer.volume.value = bassMixerVolumeDb(mixerLevels.bass);
+  }
+
+  if (drumKit) {
+    drumKit.hihat.volume.value = hiHatMixerVolumeDb(mixerLevels.hihat);
+    drumKit.ride.volume.value = rideMixerVolumeDb(mixerLevels.ride);
+  }
+}
+
+/** Update mix faders; applies immediately to loaded samplers. */
+export function setMixerLevels(levels: MixerLevels): void {
+  mixerLevels = { ...levels };
+  applyMixerVolumes();
+}
 
 /** Fixed rest before each loop repeat (after the first play-through). */
 const LOOP_REPEAT_REST: Note = { rest: true, pitch: 'R', duration: '8n' };
@@ -52,8 +95,8 @@ function loadInstrument(id: InstrumentId): Promise<Sampler> {
 
   const promise = new Promise<Sampler>((resolve) => {
     const instrument = createInstrumentSampler(id, () => {
-      instrument.volume.value = instrumentVolume(id);
       players[id] = instrument;
+      applyMixerVolumes();
       resolve(instrument);
     });
     instrument.toDestination();
@@ -77,8 +120,8 @@ function loadBassPlayer(): Promise<Sampler> {
 
   bassLoadPromise = new Promise<Sampler>((resolve) => {
     const sampler = createBassSampler(() => {
-      sampler.volume.value = bassVolumeDb();
       bassPlayer = sampler;
+      applyMixerVolumes();
       resolve(sampler);
     });
   });
@@ -86,8 +129,26 @@ function loadBassPlayer(): Promise<Sampler> {
   return bassLoadPromise;
 }
 
+function loadDrumKit(): Promise<DrumKit> {
+  if (drumKit?.hihat.loaded && drumKit.ride.loaded) {
+    return Promise.resolve(drumKit);
+  }
+
+  if (drumLoadPromise) return drumLoadPromise;
+
+  drumLoadPromise = new Promise<DrumKit>((resolve) => {
+    drumKit = createDrumKit(() => {
+      if (drumKit) resolve(drumKit);
+    });
+  });
+
+  return drumLoadPromise;
+}
+
 function releaseBackingPlayers(): void {
   bassPlayer?.releaseAll();
+  drumKit?.hihat.releaseAll();
+  drumKit?.ride.releaseAll();
 }
 
 function releaseAllPlayers(): void {
@@ -117,6 +178,11 @@ export function preloadInstrument(id: InstrumentId = currentInstrumentId): void 
 /** Load upright bass samples when backing is enabled. */
 export function preloadBass(): void {
   void loadBassPlayer();
+}
+
+/** Load hi-hat and ride samples when backing is enabled. */
+export function preloadDrums(): void {
+  void loadDrumKit();
 }
 
 /** Cache sample MP3s and decode all instruments in the background. */
@@ -409,18 +475,18 @@ export async function playNotes(
   const generation = ++playbackGeneration;
 
   const player = await ensurePlayer();
-  player.volume.value = instrumentVolume(currentInstrumentId);
+  applyMixerVolumes();
 
   let compPlayer: Sampler | null = null;
   if (backing) {
     const compId = compInstrumentForMelody(currentInstrumentId);
-    const [comp, bass] = await Promise.all([
+    const [comp] = await Promise.all([
       loadInstrument(compId),
       loadBassPlayer(),
+      loadDrumKit(),
     ]);
     compPlayer = comp;
-    compPlayer.volume.value = compVolumeDb(compId);
-    bass.volume.value = bassVolumeDb();
+    applyMixerVolumes();
   }
 
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
@@ -460,6 +526,18 @@ export async function playNotes(
           bassPlayer,
           backing.key,
           bpm,
+          pass.startTime,
+          pass.totalDuration,
+          harmonicStart,
+          gridOffset
+        );
+      }
+
+      if (drumKit) {
+        scheduleDrumHits(
+          drumKit,
+          bpm,
+          swing,
           pass.startTime,
           pass.totalDuration,
           harmonicStart,
@@ -517,6 +595,10 @@ export function disposePlayback(): void {
   bassPlayer?.dispose();
   bassPlayer = null;
   bassLoadPromise = null;
+  disposeDrumKit(drumKit);
+  drumKit = null;
+  drumLoadPromise = null;
+  disposeDrumChains();
   disposeBassChain();
   onInterrupted = null;
 }

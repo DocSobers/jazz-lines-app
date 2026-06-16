@@ -136,6 +136,202 @@ h1 {
   max-width: 36rem;
 }
 
+.header__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+}
+
+.backing-mixer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.backing-mixer__top {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.backing-mixer__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.backing-mixer__reset {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.backing-mixer__reset:hover,
+.backing-mixer__reset:focus-visible {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.backing-mixer__desk {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem 0.45rem;
+  background: color-mix(in srgb, var(--surface-2) 55%, #141414);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, #333);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent);
+}
+
+.backing-mixer__scale {
+  position: relative;
+  width: 1.55rem;
+  height: 5.5rem;
+  flex-shrink: 0;
+  margin-bottom: 1.15rem;
+  user-select: none;
+}
+
+.backing-mixer__scale-mark {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-size: 0.52rem;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--muted) 90%, #aaa);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.backing-mixer__scale-mark--unity {
+  color: color-mix(in srgb, var(--accent) 85%, #fff);
+  font-weight: 700;
+}
+
+.backing-mixer__scale-mark--plus {
+  color: color-mix(in srgb, #e8a84a 75%, var(--muted));
+}
+
+.backing-mixer__strips {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.backing-mixer__strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+  min-width: 2rem;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.sq-fader {
+  position: relative;
+  width: 1.35rem;
+  height: 5.5rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, #0a0a0a 40%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 50%, #222);
+  touch-action: none;
+  cursor: ns-resize;
+  outline: none;
+}
+
+.sq-fader:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--border) 50%, #222),
+    0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.sq-fader__boost {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 2px;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, #c8882a 12%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sq-fader__unity-zone {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 0 0 2px 2px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sq-fader__unity-line {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--accent) 65%, #8fd4ff);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sq-fader__cap {
+  position: absolute;
+  left: 50%;
+  width: 1.05rem;
+  height: 14px;
+  margin-left: -0.525rem;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #e8e8e8 90%, #888) 0%,
+    color-mix(in srgb, #b8b8b8 85%, #555) 45%,
+    color-mix(in srgb, #909090 80%, #333) 100%
+  );
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.35);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.backing-mixer__strip-label {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.58rem;
+}
+
+.backing-mixer__strip-value {
+  min-width: 1.75rem;
+  text-align: center;
+  font-size: 0.56rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1;
+}
+
+.backing-mixer__strip-value--unity {
+  color: color-mix(in srgb, var(--accent) 85%, #fff);
+  font-weight: 700;
+}
+
+.backing-mixer__strip-value--plus {
+  color: color-mix(in srgb, #e8a84a 80%, var(--text));
+  font-weight: 600;
+}
+
 .key-wheel-wrap {
   display: flex;
   flex-direction: column;

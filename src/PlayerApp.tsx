@@ -1,6 +1,7 @@
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ExampleEditor from './components/ExampleEditor';
+import BackingMixer from './components/BackingMixer';
 import KeyWheel from './components/KeyWheel';
 import StaffCard from './components/StaffCard';
 import NavBar from './components/NavBar';
@@ -9,6 +10,12 @@ import { isAdminUser } from './lib/auth';
 import { buildDemoChain, DEMO_IDIOM_IDS } from './lib/demo-idioms';
 import { compInstrumentForMelody, compInstrumentLabel, iiViProgressionLabel } from './lib/comp';
 import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
+import { type MixerChannel } from './lib/mixer';
+import {
+  loadMixerDefaults,
+  persistMixerDefaults,
+  resetMixerToDefaults,
+} from './lib/mixer-prefs';
 import { REFERENCE_KEY, semitonesFromReference, type WheelKey } from './lib/keys';
 import { IDIOM_SECTIONS, JAZZ_IDIOMS, PROGRESSION } from './data/jazz-idioms';
 import {
@@ -27,15 +34,17 @@ import {
   startPitchClass,
   transposeExample,
 } from './lib/notes';
-import { warmBassCache } from './lib/sample-cache';
+import { warmBassCache, warmDrumCache } from './lib/sample-cache';
 import {
   disposePlayback,
   initPlaybackLifecycle,
   playNotes,
   preloadAllInstruments,
   preloadBass,
+  preloadDrums,
   preloadInstrument,
   setPlaybackInstrument,
+  setMixerLevels,
   stopPlayback,
 } from './lib/playback';
 import type { BoundaryJoin, ChainItem, Example, Note } from './types';
@@ -141,6 +150,8 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [playing, setPlaying] = useState(false);
   const [lineLoop, setLineLoop] = useState(false);
   const [backingEnabled, setBackingEnabled] = useState(false);
+  const [mixerDefaults] = useState(loadMixerDefaults);
+  const [mixerLevels, setMixerLevelsState] = useState(loadMixerDefaults);
   const [showAllJoinIdioms, setShowAllJoinIdioms] = useState(false);
   const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
@@ -312,6 +323,28 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     );
   };
 
+  const handleMixerChange = (channel: MixerChannel, value: number) => {
+    setMixerLevelsState((prev) => {
+      const next = { ...prev, [channel]: value };
+      persistMixerDefaults(next);
+      return next;
+    });
+  };
+
+  const handleMixerReset = () => {
+    const defaults = resetMixerToDefaults();
+    setMixerLevelsState(defaults);
+  };
+
+  useEffect(() => {
+    setMixerLevels(mixerLevels);
+    persistMixerDefaults(mixerLevels);
+  }, []);
+
+  useEffect(() => {
+    setMixerLevels(mixerLevels);
+  }, [mixerLevels, instrument]);
+
   useEffect(() => {
     preloadAllInstruments(instrument);
     const endLifecycle = initPlaybackLifecycle(() => setPlaying(false));
@@ -329,7 +362,9 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     if (!backingEnabled) return;
     preloadInstrument(compInstrumentForMelody(instrument));
     preloadBass();
+    preloadDrums();
     void warmBassCache();
+    void warmDrumCache();
   }, [backingEnabled, instrument]);
 
   useEffect(() => {
@@ -413,7 +448,16 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
               : 'Build a full ii–V–I line across sections, or chain any idioms freely'}
           </p>
         </div>
-        <KeyWheel selectedKey={selectedKey} onChange={setSelectedKey} />
+        <div className="header__controls">
+          <BackingMixer
+            melodyInstrument={instrument}
+            levels={mixerLevels}
+            defaultLevels={mixerDefaults}
+            onChange={handleMixerChange}
+            onReset={handleMixerReset}
+          />
+          <KeyWheel selectedKey={selectedKey} onChange={setSelectedKey} />
+        </div>
         <div className="transport">
           <label className="bpm-control instrument-control">
             Sound
@@ -478,8 +522,8 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
             aria-pressed={backingEnabled}
             title={
               backingEnabled
-                ? `Jazz bass + ${compInstrumentLabel(instrument)} · ${iiViProgressionLabel(selectedKey)}`
-                : `Jazz bass on 1 & 3 + ${compInstrumentLabel(instrument)} · ii–V–I in ${selectedKey}`
+                ? `Sock hi-hat + ride + bass + ${compInstrumentLabel(instrument)} · ${iiViProgressionLabel(selectedKey)}`
+                : `Closed hi-hat on 2 & 4, ride pattern, bass on 1 & 3 + ${compInstrumentLabel(instrument)} · ii–V–I in ${selectedKey}`
             }
           >
             Backing

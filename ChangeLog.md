@@ -199,6 +199,11 @@ Changes are listed in chronological order (oldest first).
 - **Entry** stepper on chained idioms: `+N` enters earlier (strips pickup rests first), `−N` pads later.
 - Fixes II-V #2 → I-maj #1 alignment so the resolution can land on the next beat after the prior phrase.
 
+#### `3afa10a` — SQ-style mix desk, jazz drums, and saved default levels
+- Hi-hat sock on 2 & 4 and swung ride pattern; separate samplers so ride and hat don’t repitch together.
+- SQ-7-style dB faders (unity at ¾ travel, +10 headroom); mix panel left of Key.
+- Persist default fader levels in localStorage (melody 0, comp/bass −10, drums −20).
+
 ---
 
 ## Heroku Deploy Changelog
