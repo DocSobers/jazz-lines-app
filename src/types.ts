@@ -27,6 +27,8 @@ export interface ChainItem {
   octave: number;
   /** How this idiom connects to the previous one when boundary pitch classes match */
   boundaryJoin?: BoundaryJoin;
+  /** Quarter-beat entry shift when chaining: positive = earlier, negative = later (pad). */
+  beatOffset?: number;
 }
 
 export interface JoinedLine {

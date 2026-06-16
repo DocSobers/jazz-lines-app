@@ -1,4 +1,5 @@
 import type { ChainItem, Example, Note } from '../types';
+import { durationQuarters } from './timing';
 
 const PITCH_CLASS_SEMITONE: Record<string, number> = {
   C: 0,
@@ -143,6 +144,119 @@ export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
   ];
 }
 
+function quartersToDuration(quarters: number): string {
+  if (quarters === 0.5) return '8n';
+  if (quarters === 1) return '4n';
+  if (quarters === 2) return '2n';
+  if (quarters === 0.25) return '16n';
+  if (quarters === 1 / 3) return '8t';
+  if (quarters === 2 / 3) return '4t';
+  return `4n * ${quarters}`;
+}
+
+/** Remove quarter-beat duration from the end of a note list (for earlier chain entry). */
+export function trimTailQuarters(notes: Note[], quartersToTrim: number): Note[] {
+  if (quartersToTrim <= 0) return notes;
+
+  const result = [...notes];
+  let remaining = quartersToTrim;
+
+  while (remaining > 0 && result.length > 0) {
+    const last = result[result.length - 1];
+    const dur = durationQuarters(last.duration);
+    if (dur == null) break;
+
+    if (dur <= remaining + 1e-9) {
+      remaining -= dur;
+      result.pop();
+      continue;
+    }
+
+    result[result.length - 1] = {
+      ...last,
+      duration: quartersToDuration(dur - remaining),
+    };
+    remaining = 0;
+  }
+
+  return result;
+}
+
+/** Total quarter beats of leading rests before the first sounding note. */
+export function leadingRestQuarters(notes: Note[]): number {
+  let total = 0;
+  for (const note of notes) {
+    if (!note.rest) break;
+    const quarters = durationQuarters(note.duration);
+    if (quarters == null) break;
+    total += quarters;
+  }
+  return total;
+}
+
+/** Shift a chained idiom earlier: strip its pickup rests first, then trim the prior tail. */
+export function applyEarlierEntry(
+  flattenedSoFar: Note[],
+  notesToAdd: Note[],
+  quartersEarlier: number
+): { flattenedSoFar: Note[]; notesToAdd: Note[] } {
+  if (quartersEarlier <= 0) {
+    return { flattenedSoFar, notesToAdd };
+  }
+
+  const stripFromPickup = Math.min(quartersEarlier, leadingRestQuarters(notesToAdd));
+  const trimmedNotes =
+    stripFromPickup > 0
+      ? stripLeadingRestQuarters(notesToAdd, stripFromPickup)
+      : notesToAdd;
+  const trimFromTail = quartersEarlier - stripFromPickup;
+  const trimmedFlattened =
+    trimFromTail > 0 ? trimTailQuarters(flattenedSoFar, trimFromTail) : flattenedSoFar;
+
+  return {
+    flattenedSoFar: trimmedFlattened,
+    notesToAdd: trimmedNotes,
+  };
+}
+
+/** Pad before a chained idiom so it enters later than the sequential join point. */
+export function prependEntryDelay(notes: Note[], quartersLater: number): Note[] {
+  if (quartersLater <= 0) return notes;
+  return [
+    { rest: true, pitch: 'R', duration: quartersToDuration(quartersLater) },
+    ...notes,
+  ];
+}
+/** Drop leading rests up to a quarter-beat budget (pairs with trimTailQuarters). */
+export function stripLeadingRestQuarters(notes: Note[], quartersToStrip: number): Note[] {
+  if (quartersToStrip <= 0) return notes;
+
+  const result = [...notes];
+  let remaining = quartersToStrip;
+
+  while (remaining > 0 && result.length > 0) {
+    const first = result[0];
+    if (!first.rest) break;
+
+    const dur = durationQuarters(first.duration);
+    if (dur == null) break;
+
+    if (dur <= remaining + 1e-9) {
+      remaining -= dur;
+      result.shift();
+      continue;
+    }
+
+    result[0] = {
+      ...first,
+      duration: quartersToDuration(dur - remaining),
+    };
+    remaining = 0;
+  }
+
+  return result;
+}
+
 /** Merge chain items; per-item octave overrides auto-alignment for that idiom. */
 export function flattenChain(items: ChainItem[]): Note[] {
   if (items.length === 0) return [];
@@ -170,13 +284,22 @@ export function flattenChain(items: ChainItem[]): Note[] {
       boundaryNote = result.pop();
     }
 
-    const notesToAdd =
+    let notesToAdd =
       curr.octave !== 0
         ? transposeNotes(curr.example.notes, curr.octave)
         : transposeNotes(
             curr.example.notes,
             joinOctaveOffset(result, curr.example, boundaryNote)
           );
+
+    const entryOffset = curr.beatOffset ?? 0;
+    if (entryOffset > 0) {
+      const adjusted = applyEarlierEntry(result, notesToAdd, entryOffset);
+      result.splice(0, result.length, ...adjusted.flattenedSoFar);
+      notesToAdd = adjusted.notesToAdd;
+    } else if (entryOffset < 0) {
+      notesToAdd = prependEntryDelay(notesToAdd, Math.abs(entryOffset));
+    }
 
     result.push(...notesToAdd);
   }

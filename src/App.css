@@ -351,7 +351,55 @@ a.btn {
 }
 
 .octave-control--inline {
+  margin-left: 0;
+}
+
+.chain-list__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
   margin-left: auto;
+}
+
+.beat-offset-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.beat-offset-control .octave-control__value {
+  position: relative;
+  cursor: default;
+}
+
+.beat-offset-control .octave-control__value[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.45rem);
+  z-index: 30;
+  width: max-content;
+  max-width: 12rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.beat-offset-control .octave-control__value[data-tooltip]:hover::after,
+.beat-offset-control .octave-control__value[data-tooltip]:focus-visible::after {
+  opacity: 1;
 }
 
 .octave-control__label {

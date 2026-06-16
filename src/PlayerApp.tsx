@@ -43,6 +43,8 @@ import './App.css';
 
 const OCTAVE_MIN = -3;
 const OCTAVE_MAX = 3;
+const BEAT_OFFSET_MIN = -4;
+const BEAT_OFFSET_MAX = 4;
 
 const SECTION_LABELS: Record<(typeof IDIOM_SECTIONS)[number], string> = {
   'II-V': 'II–V',
@@ -286,6 +288,23 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     );
   };
 
+  const adjustBeatOffset = (index: number, delta: number) => {
+    if (index <= 0) return;
+    setChain((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              beatOffset: Math.min(
+                BEAT_OFFSET_MAX,
+                Math.max(BEAT_OFFSET_MIN, (item.beatOffset ?? 0) + delta)
+              ),
+            }
+          : item
+      )
+    );
+  };
+
   const setBoundaryJoin = (index: number, mode: BoundaryJoin) => {
     if (index <= 0) return;
     setChain((prev) =>
@@ -521,7 +540,57 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                       {formatPitchClass(endPitchClass(item.example))}
                     </span>
                   </div>
-                  <div className="octave-control octave-control--inline" aria-label="Octave">
+                  <div className="chain-list__controls">
+                    {i > 0 && (
+                      <div
+                        className="beat-offset-control"
+                        aria-label={`Entry offset for ${item.example.label}`}
+                      >
+                        <span className="octave-control__label">Entry</span>
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--icon"
+                          onClick={() => adjustBeatOffset(i, -1)}
+                          disabled={(item.beatOffset ?? 0) <= BEAT_OFFSET_MIN}
+                          aria-label={`Enter ${item.example.label} one beat later`}
+                        >
+                          −
+                        </button>
+                        <span
+                          className="octave-control__value"
+                          data-tooltip={(() => {
+                            const offset = item.beatOffset ?? 0;
+                            if (offset > 0) {
+                              return `Enters ${offset} beat${
+                                offset === 1 ? '' : 's'
+                              } earlier — strips pickup rests first, then overlaps the prior idiom if needed`;
+                            }
+                            if (offset < 0) {
+                              return `Waits ${Math.abs(offset)} beat${
+                                offset === -1 ? '' : 's'
+                              } after the previous idiom before starting`;
+                            }
+                            return 'Joins sequentially as written (includes any pickup rests)';
+                          })()}
+                        >
+                          {(item.beatOffset ?? 0) > 0
+                            ? `+${item.beatOffset}`
+                            : (item.beatOffset ?? 0) < 0
+                              ? `${item.beatOffset}`
+                              : '0'}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--icon"
+                          onClick={() => adjustBeatOffset(i, 1)}
+                          disabled={(item.beatOffset ?? 0) >= BEAT_OFFSET_MAX}
+                          aria-label={`Enter ${item.example.label} one beat earlier`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                    <div className="octave-control octave-control--inline" aria-label="Octave">
                     <button
                       type="button"
                       className="btn btn--ghost btn--icon"
@@ -543,6 +612,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                     >
                       +
                     </button>
+                  </div>
                   </div>
                   {i < chain.length - 1 && (
                     <>
