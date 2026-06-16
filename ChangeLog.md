@@ -195,7 +195,7 @@ Changes are listed in chronological order (oldest first).
 - Full beats 1–4 count-in; melody on triplet & of 4 (`pickupBeat` 3.67); comp on triplet & of 2/4 from bar 2.
 - Fingered jazz bass on beats 1 & 3 (root / fifth) with `tonejs-instrument-bass-electric-mp3` and warm pizz envelope.
 
-#### `9545152` — Bidirectional entry beat offset when chaining idioms
+#### `09e7fd4` — Bidirectional entry beat offset when chaining idioms
 - **Entry** stepper on chained idioms: `+N` enters earlier (strips pickup rests first), `−N` pads later.
 - Fixes II-V #2 → I-maj #1 alignment so the resolution can land on the next beat after the prior phrase.
 
