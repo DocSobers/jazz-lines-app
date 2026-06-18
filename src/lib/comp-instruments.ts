@@ -1,4 +1,4 @@
-import { instrumentVolume, type InstrumentId } from './instruments';
+import type { InstrumentId } from './instruments';
 
 /** Comp instrument paired with the user's melody choice (avoids piano-on-piano). */
 export function compInstrumentForMelody(melody: InstrumentId): InstrumentId {
@@ -11,9 +11,16 @@ export function compInstrumentLabel(melody: InstrumentId): string {
   return 'Guitar comp';
 }
 
+/** Nominal level when an instrument is used for comp (under the melody). */
+const COMP_NOMINAL_DB: Record<InstrumentId, number> = {
+  piano: -4,
+  nylon: -4,
+  flute: -6,
+};
+
 /** dB offset applied when an instrument is used for backing (under the melody). */
 export function compVolumeDb(instrument: InstrumentId): number {
-  return instrumentVolume(instrument) - 10;
+  return COMP_NOMINAL_DB[instrument];
 }
 
 /** Upright jazz bass sits under the melody and comp. */
