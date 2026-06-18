@@ -213,6 +213,10 @@ Changes are listed in chronological order (oldest first).
 - Add mermaid diagram for UI, playback layers, and shared timing grid.
 - Summarize melody, comp, bass, drums, and Backing toggle behavior.
 
+#### `5369326` — Fix piano comp volume and ignore local .env files
+- Use fixed comp nominal dB levels so piano backing is audible under the melody.
+- Add `.env` to `.gitignore` for local Clerk and server secrets.
+
 ---
 
 ## Heroku Deploy Changelog
