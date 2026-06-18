@@ -1,7 +1,7 @@
 {
   "name": "jazz-lines-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,8 +19,8 @@
     "@clerk/clerk-react": "^5.61.8",
     "@teropa/drumkit": "^1.1.0",
     "express": "^4.21.2",
-    "geoip-lite": "^1.4.10",
-    "nodemailer": "^6.10.0",
+    "geoip-lite": "^2.0.3",
+    "nodemailer": "^9.0.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
@@ -31,7 +31,7 @@
     "tonejs-instrument-guitar-nylon-mp3": "^1.1.1",
     "tonejs-instrument-piano-mp3": "^1.1.2",
     "vexflow": "^5.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -46,5 +46,9 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12"
+  },
+  "allowScripts": {
+    "@clerk/shared@3.47.7": true,
+    "fsevents@2.3.3": true
   }
 }
