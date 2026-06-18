@@ -209,6 +209,10 @@ Changes are listed in chronological order (oldest first).
 - Bump app version to 1.0.0 and refresh `package-lock.json`.
 - Approve `@clerk/shared` and `fsevents` install scripts for npm v12 readiness.
 
+#### `1423a00` — Document playback architecture in README
+- Add mermaid diagram for UI, playback layers, and shared timing grid.
+- Summarize melody, comp, bass, drums, and Backing toggle behavior.
+
 ---
 
 ## Heroku Deploy Changelog
