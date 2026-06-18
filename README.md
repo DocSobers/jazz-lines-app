@@ -4,6 +4,51 @@ Play and chain examples from *Mel Bay's Complete Book of Jazz Guitar Lines & Phr
 
 Two examples can be joined when the **last note of one** matches the **first note of the next** (pitch class — octave ignored). When played back, the shared boundary note is only sounded once.
 
+## Architecture at a glance
+
+Playback is built on **Tone.js**. The melody, comp, bass, and drums share a single quarter-note timing grid (`timing.ts`, `anacrusis.ts`, `comp-schedule.ts`). Tone Transport sets BPM; each part schedules notes with absolute `triggerAttackRelease` times so pickup bars, swing, and loop repeats stay aligned.
+
+```mermaid
+flowchart LR
+  subgraph ui [Player UI]
+    BackingToggle
+    MixDesk
+    KeyWheel
+  end
+
+  subgraph playback [playback.ts]
+    Melody
+    Comp
+    Bass
+    Drums
+  end
+
+  subgraph grid [Shared timing]
+    timing.ts
+    anacrusis.ts
+    comp-schedule.ts
+  end
+
+  BackingToggle --> playback
+  MixDesk --> playback
+  KeyWheel --> Comp
+  grid --> Comp
+  grid --> Bass
+  grid --> Drums
+  grid --> Melody
+```
+
+| Layer | Role |
+|-------|------|
+| **Player UI** | Key wheel, transport (Play line, Backing toggle), SQ-style mix desk |
+| **Melody** | Nylon guitar, flute, or piano — the chained idiom line |
+| **Comp** | Rootless ii–V–I piano (or nylon guitar when melody is piano) on & of 2 and & of 4 |
+| **Bass** | Fingered electric bass on beats 1 and 3 (root / fifth) |
+| **Drums** | Hi-hat on 2 and 4; swung jazz ride pattern |
+| **Shared timing** | Anacrusis count-in, pickup alignment, swing offsets, loop re-schedule |
+
+With **Backing** off, only the melody plays. With it on, comp, bass, and drums schedule together under the full line.
+
 ## Run locally
 
 ```bash
