@@ -204,6 +204,11 @@ Changes are listed in chronological order (oldest first).
 - SQ-7-style dB faders (unity at ¾ travel, +10 headroom); mix panel left of Key.
 - Persist default fader levels in localStorage (melody 0, comp/bass −10, drums −20).
 
+#### `076295a` — Pin Node 22 for dev parity and sync package versions
+- Add `.nvmrc` so local installs match Heroku’s Node 22.x engine.
+- Bump app version to 1.0.0 and refresh `package-lock.json`.
+- Approve `@clerk/shared` and `fsevents` install scripts for npm v12 readiness.
+
 ---
 
 ## Heroku Deploy Changelog
@@ -251,4 +256,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-15 (Heroku v27)*
+*Last updated: 2026-06-17*
