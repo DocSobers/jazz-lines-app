@@ -232,6 +232,11 @@ Changes are listed in chronological order (oldest first).
 - I-maj #4 resolution call-out; **Your Jazz Line** summary with join tips and progression highlight.
 - Optional **As Written** / **End As Triplet** entry rhythm; demo V–I #1a swung eighths without triplet join.
 
+#### `1aefa70` — Add demo join triplet rhythm for II–V #24 → V–I #1a chain
+- Split **Line** vs **Join** rhythm controls; demo defaults: #24 Written, #1a book + triplet join.
+- II–V #24: B–D swung, G–F–B triplet; keep #24’s B at join, drop #1a’s B, Ab–G–F triplet to E.
+- Playback support for swung-plus-triplet figures and join triplet groups at merged boundaries.
+
 ---
 
 ## Heroku Deploy Changelog
@@ -281,4 +286,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-19 (Heroku v28; `feature/demo-ux` on GitHub)*
+*Last updated: 2026-06-17 (`1aefa70` on `feature/demo-ux`)*
