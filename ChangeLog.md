@@ -261,7 +261,7 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 | **v25** | 2026-06-15 17:35 | Deploy `0e49cb5` | Fix playhead stalling on rests during first loop pass |
 | **v26** | 2026-06-15 17:43 | Deploy `f7d1e3c` | Fix playhead finishing early and stalling on first loop pass |
 | **v27** | 2026-06-15 17:52 | Deploy `76d9622` | Render eighth-note triplets on staff notation (e.g. II-V #6b) |
-| **v28** | 2026-06-17 | Deploy `c478229` | Piano backing v1.5: comp, bass, drums, mix desk, strict harmony grid, unified line endings *(pending — push `main` to Heroku)* |
+| **v28** | 2026-06-19 12:03 | Deploy `f22fcd5` | Piano backing v1.5: comp, bass, drums, mix desk, strict harmony grid, unified line endings *(current)* |
 
 ### Notes on Heroku releases
 
@@ -269,8 +269,9 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 - **v4–v6:** First production deploys; v6 resolved the blank authenticated player screen.
 - **v11–v14:** Config-only releases for signup email notifications (SMTP + Clerk webhook secrets). No application code changed.
 - **v12–v26:** Feature and bug-fix deploys aligned with the git commits listed above.
+- **v28:** Piano backing v1.5 — full rhythm section, mix desk, strict ii–V–I harmony grid, unified line endings.
 - Commits prior to `55b4b35` (initial player through themes/staff) were developed and pushed to GitHub before Heroku deployment was configured; they shipped together in **v4**.
 
 ---
 
-*Last updated: 2026-06-17 (Heroku v28 pending deploy)*
+*Last updated: 2026-06-19 (Heroku v28)*
