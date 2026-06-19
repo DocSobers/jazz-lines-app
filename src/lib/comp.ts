@@ -3,6 +3,9 @@ import { iiViProgression, type ProgressionBar } from './comp-progression';
 
 export type { ChordQuality, ChordSymbol, ProgressionBar } from './comp-progression';
 export { chordLabel, iiViProgression, iiViProgressionLabel } from './comp-progression';
+export { buildHarmonyTimeline, backingFormEndQuarters, compBackingEndQuarters, chordAtQuarter } from './harmony-timeline';
+export { applyLineEndingNotes, resolveLineEnding, COMP_FERMATA_HOLD_QUARTERS } from './line-ending';
+export type { HarmonySegment, HarmonyTimeline } from './harmony-timeline';
 export { compInstrumentForMelody, compInstrumentLabel, bassVolumeDb, drumVolumeDb } from './comp-instruments';
 
 /** Total duration of one ii–V–I loop in whole-note beats (4 bars × 4 beats). */

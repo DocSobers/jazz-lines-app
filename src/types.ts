@@ -5,6 +5,8 @@ export interface Note {
   duration: string;
   /** Rest — advance time without sounding a pitch */
   rest?: boolean;
+  /** Bar-4 fermata hold when the line is extended to the backing cutoff */
+  fermata?: boolean;
 }
 
 export interface Example {
@@ -21,12 +23,17 @@ export interface Example {
 
 export type BoundaryJoin = 'merge' | 'restate';
 
+/** Whether the next idiom auto-aligns octave to the prior ending note at a shared pitch. */
+export type RegisterJoin = 'align' | 'asWritten';
+
 export interface ChainItem {
   example: Example;
   /** Whole-octave shift applied to this idiom in the line */
   octave: number;
   /** How this idiom connects to the previous one when boundary pitch classes match */
   boundaryJoin?: BoundaryJoin;
+  /** Keep written register at join; shared boundary notes sound in each idiom's octave (no Once drop). */
+  registerJoin?: RegisterJoin;
   /** Quarter-beat entry shift when chaining: positive = earlier, negative = later (pad). */
   beatOffset?: number;
 }

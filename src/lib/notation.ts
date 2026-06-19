@@ -1,5 +1,6 @@
 import {
   Accidental,
+  Articulation,
   Beam,
   Formatter,
   Renderer,
@@ -216,6 +217,9 @@ function noteToStaveNotes(note: Note): StaveNote[] {
     autoStem: true,
   });
   addAccidental(staveNote, note.pitch);
+  if (note.fermata) {
+    staveNote.addModifier(new Articulation('a@a').setPosition(Articulation.Position.ABOVE));
+  }
   return [staveNote];
 }
 

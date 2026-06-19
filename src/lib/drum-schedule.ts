@@ -1,7 +1,8 @@
 import type { SwingAmount } from './playback';
 import { swungCompOffsetsInBar } from './comp-schedule';
 import type { DrumKit, DrumVoice } from './drum-sampler';
-import { quarterLengthSeconds } from './timing';
+import { STANDARD_FINAL_BAR_START_QUARTERS } from './line-ending';
+import { MEASURE_QUARTERS, quarterLengthSeconds } from './timing';
 
 const DRUM_NOTE = 'C4';
 
@@ -53,12 +54,18 @@ export function buildDrumHits(
   durationQuarters: number,
   bpm: number,
   swing: SwingAmount,
-  harmonicStartQuarters = 0
+  harmonicStartQuarters = 0,
+  finalBarStartQuarters = STANDARD_FINAL_BAR_START_QUARTERS
 ): DrumHit[] {
   const quarter = quarterLengthSeconds(bpm);
   const hits: DrumHit[] = [];
 
-  for (let barStart = harmonicStartQuarters; barStart < durationQuarters; barStart += 4) {
+  for (
+    let barStart = harmonicStartQuarters;
+    barStart < durationQuarters;
+    barStart += MEASURE_QUARTERS
+  ) {
+    if (barStart >= finalBarStartQuarters) break;
     for (const offset of HI_HAT_BEAT_OFFSETS) {
       const beat = barStart + offset;
       if (beat >= durationQuarters) continue;
@@ -92,11 +99,18 @@ export function scheduleDrumHits(
   startTime: number,
   durationSeconds: number,
   harmonicStartQuarters = 0,
-  playbackOffsetSeconds = 0
+  playbackOffsetSeconds = 0,
+  finalBarStartQuarters = STANDARD_FINAL_BAR_START_QUARTERS
 ): void {
   const quarter = quarterLengthSeconds(bpm);
   const durationQuarters = durationSeconds / quarter;
-  const hits = buildDrumHits(durationQuarters, bpm, swing, harmonicStartQuarters);
+  const hits = buildDrumHits(
+    durationQuarters,
+    bpm,
+    swing,
+    harmonicStartQuarters,
+    finalBarStartQuarters
+  );
 
   for (const hit of hits) {
     const player = hit.voice === 'hihat' ? kit.hihat : kit.ride;

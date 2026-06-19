@@ -30,6 +30,7 @@ export function resolveAnacrusisTimeline(
   if (pickupBeat != null && pickupBeat > 0) {
     return {
       pickupOnsetQuarters: pickupOnsetQuarters(pickupBeat),
+      /** Melody pickup in bar 1; comp/bass/drums enter at bar 2 downbeat. */
       harmonicStartQuarters: MEASURE_QUARTERS,
     };
   }

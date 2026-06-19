@@ -113,6 +113,16 @@ export function transposeNotes(notes: Note[], octaveOffset: number): Note[] {
   });
 }
 
+function autoJoinOctaveOffset(
+  item: ChainItem,
+  flattenedSoFar: Note[],
+  next: Example,
+  boundaryEnd?: Note
+): number {
+  if (item.registerJoin === 'asWritten') return 0;
+  return joinOctaveOffset(flattenedSoFar, next, boundaryEnd);
+}
+
 function joinOctaveOffset(
   flattenedSoFar: Note[],
   next: Example,
@@ -257,17 +267,39 @@ export function stripLeadingRestQuarters(notes: Note[], quartersToStrip: number)
   return result;
 }
 
-/** Merge chain items; per-item octave overrides auto-alignment for that idiom. */
-export function flattenChain(items: ChainItem[]): Note[] {
+export interface ChainSegment {
+  section: string;
+  notes: Note[];
+}
+
+/** At an aligned join, match the next idiom's first note length to the prior ending when shorter. */
+function matchBoundaryEntryDuration(notesToAdd: Note[], prevEnding: Note): Note[] {
+  const firstIdx = notesToAdd.findIndex((note) => !note.rest);
+  if (firstIdx < 0) return notesToAdd;
+
+  const prevQuarters = durationQuarters(prevEnding.duration);
+  const firstQuarters = durationQuarters(notesToAdd[firstIdx].duration);
+  if (prevQuarters == null || firstQuarters == null || prevQuarters > firstQuarters) {
+    return notesToAdd;
+  }
+
+  const result = [...notesToAdd];
+  result[firstIdx] = { ...result[firstIdx], duration: prevEnding.duration };
+  return result;
+}
+
+/** Per-idiom note spans after join/octave/entry rules (same logic as flattenChain). */
+export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
   if (items.length === 0) return [];
 
+  const segments: ChainSegment[] = [];
   const first = items[0];
-  const result: Note[] = [
-    ...transposeNotes(
-      prependPickup(first.example.notes, first.example.pickupBeat),
-      first.octave
-    ),
-  ];
+  const firstNotes = transposeNotes(
+    prependPickup(first.example.notes, first.example.pickupBeat),
+    first.octave
+  );
+  segments.push({ section: first.example.section, notes: firstNotes });
+  let result: Note[] = [...firstNotes];
 
   for (let i = 1; i < items.length; i++) {
     const curr = items[i];
@@ -277,33 +309,121 @@ export function flattenChain(items: ChainItem[]): Note[] {
       pitchClass(prevSounding[prevSounding.length - 1].pitch) ===
       pitchClass(currSounding[0].pitch);
 
-    const mergeBoundary = (curr.boundaryJoin ?? 'merge') === 'merge';
+    const mergeBoundary =
+      (curr.boundaryJoin ?? 'merge') === 'merge' &&
+      (curr.registerJoin ?? 'align') !== 'asWritten';
 
     let boundaryNote: Note | undefined;
     if (sharesBoundary && mergeBoundary && result.length > 0) {
       boundaryNote = result.pop();
+      const lastSeg = segments[segments.length - 1];
+      lastSeg.notes = lastSeg.notes.slice(0, -1);
     }
 
-    let notesToAdd =
-      curr.octave !== 0
-        ? transposeNotes(curr.example.notes, curr.octave)
-        : transposeNotes(
-            curr.example.notes,
-            joinOctaveOffset(result, curr.example, boundaryNote)
-          );
+    let notesToAdd = transposeNotes(
+      curr.example.notes,
+      autoJoinOctaveOffset(curr, result, curr.example, boundaryNote)
+    );
+    if (curr.octave !== 0) {
+      notesToAdd = transposeNotes(notesToAdd, curr.octave);
+    }
+
+    if (
+      curr.example.section === 'V-I' &&
+      (curr.registerJoin ?? 'align') === 'align'
+    ) {
+      const leading = leadingRestQuarters(notesToAdd);
+      if (leading > 0) {
+        notesToAdd = stripLeadingRestQuarters(notesToAdd, leading);
+      }
+    }
+
+    if (sharesBoundary && (curr.registerJoin ?? 'align') === 'align') {
+      const prevEnding = soundingNotes(items[i - 1].example.notes).at(-1);
+      if (prevEnding) {
+        notesToAdd = matchBoundaryEntryDuration(notesToAdd, prevEnding);
+      }
+    }
 
     const entryOffset = curr.beatOffset ?? 0;
     if (entryOffset > 0) {
       const adjusted = applyEarlierEntry(result, notesToAdd, entryOffset);
       result.splice(0, result.length, ...adjusted.flattenedSoFar);
+      const lastSeg = segments[segments.length - 1];
+      lastSeg.notes = trimTailQuarters(lastSeg.notes, entryOffset);
       notesToAdd = adjusted.notesToAdd;
     } else if (entryOffset < 0) {
       notesToAdd = prependEntryDelay(notesToAdd, Math.abs(entryOffset));
     }
 
+    segments.push({ section: curr.example.section, notes: notesToAdd });
     result.push(...notesToAdd);
   }
 
+  return segments;
+}
+
+export function notesDurationQuarters(notes: Note[]): number {
+  let total = 0;
+  for (const note of notes) {
+    const quarters = durationQuarters(note.duration);
+    if (quarters != null) total += quarters;
+  }
+  return total;
+}
+
+/** Quarter-beat position where the last sounding note begins. */
+export function lastSoundingNoteOnsetQuarters(notes: Note[]): number | null {
+  let time = 0;
+  let lastOnset: number | null = null;
+  for (const note of notes) {
+    if (!note.rest) lastOnset = time;
+    const quarters = durationQuarters(note.duration);
+    if (quarters == null) break;
+    time += quarters;
+  }
+  return lastOnset;
+}
+
+/** Merge chain items; per-item octave overrides auto-alignment for that idiom. */
+export function flattenChain(items: ChainItem[]): Note[] {
+  return buildChainSegments(items).flatMap((segment) => segment.notes);
+}
+
+/** Hold the last sounding note until a target grid quarter (e.g. end of backing form). */
+export function extendLastNoteToQuarter(notes: Note[], endQuarter: number): Note[] {
+  if (notes.length === 0) return notes;
+
+  let lastSoundingIdx = -1;
+  for (let i = notes.length - 1; i >= 0; i--) {
+    if (!notes[i].rest) {
+      lastSoundingIdx = i;
+      break;
+    }
+  }
+  if (lastSoundingIdx < 0) return notes;
+
+  let onset = 0;
+  for (let i = 0; i < lastSoundingIdx; i++) {
+    const quarters = durationQuarters(notes[i].duration);
+    if (quarters == null) return notes;
+    onset += quarters;
+  }
+
+  const holdQuarters = endQuarter - onset;
+  if (holdQuarters <= 0) return notes;
+
+  const currentQuarters = durationQuarters(notes[lastSoundingIdx].duration);
+  if (currentQuarters != null && holdQuarters <= currentQuarters + 1e-9) {
+    return notes;
+  }
+
+  const result = [...notes];
+  result[lastSoundingIdx] = {
+    ...result[lastSoundingIdx],
+    duration: quartersToDuration(holdQuarters),
+    fermata: true,
+  };
   return result;
 }
 

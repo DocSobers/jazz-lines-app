@@ -1,12 +1,13 @@
 import * as Tone from 'tone';
 import type { Sampler } from 'tone';
-import type { Note } from '../types';
+import type { ChainItem, Note } from '../types';
 import {
   createInstrumentSampler,
   INSTRUMENTS,
   type InstrumentId,
 } from './instruments';
 import { warmInstrumentCache, warmSampleCache, registerSampleCache } from './sample-cache';
+import { buildHarmonyTimeline, applyLineEndingNotes } from './harmony-timeline';
 import type { WheelKey } from './keys';
 import { resolveAnacrusisTimeline, type AnacrusisTimeline } from './anacrusis';
 import { scheduleBassHits } from './bass-schedule';
@@ -160,6 +161,8 @@ function releaseAllPlayers(): void {
 
 export interface BackingOptions {
   key: WheelKey;
+  chain: ChainItem[];
+  pickupBeat?: number;
 }
 
 /** Switch playback instrument (stops current audio). */
@@ -491,44 +494,64 @@ export async function playNotes(
 
   const contentDuration = scheduleTotalDuration(buildSchedule(notes, bpm, swing));
   const anacrusis = resolveAnacrusisTimeline(notes, anacrusisPickupBeat);
+  const harmonyTimeline =
+    backing != null
+      ? buildHarmonyTimeline(
+          backing.chain,
+          backing.key,
+          backing.pickupBeat ?? anacrusisPickupBeat
+        )
+      : null;
+
+  const cycleNotesForPass = (rawNotes: Note[]) => {
+    const passNotes = applyLineEndingNotes(rawNotes, anacrusisPickupBeat);
+    return loop ? notesForLoopCycle(passNotes) : passNotes;
+  };
+
+  const backingDurationSeconds = (passTotalDuration: number, compOnly = false): number => {
+    if (!harmonyTimeline || !backing) return passTotalDuration;
+    const quarter = quarterSeconds(bpm);
+    const endQuarters = compOnly
+      ? harmonyTimeline.ending.compEndQuarters
+      : harmonyTimeline.ending.melodyEndQuarters;
+    const formEnd = endQuarters * quarter;
+    return Math.min(passTotalDuration, formEnd);
+  };
 
   const runPass = (isRepeat = false) => {
     if (generation !== playbackGeneration) return;
     if (isRepeat) releaseAllPlayers();
 
-    let cycleNotes = notes;
-    if (loop) {
-      cycleNotes = notesForLoopCycle(cycleNotes);
-    }
+    const cycleNotes = cycleNotesForPass(notes);
     const pass = schedulePass(player, cycleNotes, bpm, swing, isRepeat, anacrusis);
 
     if (anacrusis) {
       scheduleAnacrusisCountIn(pass.startTime, bpm, anacrusis.pickupOnsetQuarters);
     }
 
-    if (backing && compPlayer) {
-      const harmonicStart = anacrusis?.harmonicStartQuarters ?? 0;
+    if (backing && compPlayer && harmonyTimeline) {
+      const harmonicStart = harmonyTimeline.harmonicStartQuarters;
       const gridOffset = pass.playbackOffsetSeconds;
+      const backingSeconds = backingDurationSeconds(pass.totalDuration);
+      const compSeconds = backingDurationSeconds(pass.totalDuration, true);
 
       scheduleCompHits(
         compPlayer,
-        backing.key,
+        harmonyTimeline,
         bpm,
         swing,
         pass.startTime,
-        pass.totalDuration,
-        harmonicStart,
+        compSeconds,
         gridOffset
       );
 
       if (bassPlayer) {
         scheduleBassHits(
           bassPlayer,
-          backing.key,
+          harmonyTimeline,
           bpm,
           pass.startTime,
-          pass.totalDuration,
-          harmonicStart,
+          compSeconds,
           gridOffset
         );
       }
@@ -539,9 +562,10 @@ export async function playNotes(
           bpm,
           swing,
           pass.startTime,
-          pass.totalDuration,
+          backingSeconds,
           harmonicStart,
-          gridOffset
+          gridOffset,
+          harmonyTimeline.ending.finalBarStartQuarters
         );
       }
     }

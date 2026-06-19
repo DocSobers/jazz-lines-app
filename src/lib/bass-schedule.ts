@@ -1,8 +1,11 @@
 import type { Sampler } from 'tone';
-import type { WheelKey } from './keys';
-import { iiViProgression } from './comp-progression';
 import { chordFifthPitch, chordRootPitch } from './comp-voicings';
-import { quarterLengthSeconds } from './timing';
+import {
+  chordAtQuarter,
+  COMP_FERMATA_HOLD_QUARTERS,
+  type HarmonyTimeline,
+} from './harmony-timeline';
+import { MEASURE_QUARTERS, quarterLengthSeconds } from './timing';
 
 export interface BassHit {
   time: number;
@@ -24,25 +27,27 @@ function bassHitDuration(offset: (typeof BASS_BEAT_OFFSETS)[number], quarter: nu
   return offset === 0 ? quarter * 1.85 : quarter * 1.75;
 }
 
-/** Build bass hits: root on beat 1, fifth on beat 3. */
+/** Build bass hits: root on beat 1, fifth on beat 3 (section-aware harmony). */
 export function buildBassHits(
-  key: WheelKey,
+  timeline: HarmonyTimeline,
   durationQuarters: number,
-  bpm: number,
-  harmonicStartQuarters = 0
+  bpm: number
 ): BassHit[] {
-  const progression = iiViProgression(key);
   const quarter = quarterLengthSeconds(bpm);
   const hits: BassHit[] = [];
+  const harmonicStart = timeline.harmonicStartQuarters;
+  const { finalBarStartQuarters } = timeline.ending;
 
-  for (let barStart = harmonicStartQuarters; barStart < durationQuarters; barStart += 4) {
-    const barIndex =
-      Math.floor((barStart - harmonicStartQuarters) / 4) % progression.length;
-    const chord = progression[barIndex].chord;
+  for (let barStart = harmonicStart; barStart < durationQuarters; barStart += MEASURE_QUARTERS) {
+    if (barStart >= finalBarStartQuarters) break;
 
     for (const offset of BASS_BEAT_OFFSETS) {
       const beat = barStart + offset;
       if (beat >= durationQuarters) continue;
+
+      const chord = chordAtQuarter(timeline, beat);
+      if (!chord) continue;
+
       const pitch = offset === 0 ? chordRootPitch(chord) : chordFifthPitch(chord);
       hits.push({
         time: beat * quarter,
@@ -53,21 +58,30 @@ export function buildBassHits(
     }
   }
 
+  const fermataChord = chordAtQuarter(timeline, finalBarStartQuarters);
+  if (fermataChord && durationQuarters > finalBarStartQuarters) {
+    hits.push({
+      time: finalBarStartQuarters * quarter,
+      pitch: chordRootPitch(fermataChord),
+      duration: COMP_FERMATA_HOLD_QUARTERS * quarter,
+      velocity: BASS_VELOCITY[0],
+    });
+  }
+
   return hits;
 }
 
 export function scheduleBassHits(
   player: Sampler,
-  key: WheelKey,
+  timeline: HarmonyTimeline,
   bpm: number,
   startTime: number,
   durationSeconds: number,
-  harmonicStartQuarters = 0,
   playbackOffsetSeconds = 0
 ): void {
   const quarter = quarterLengthSeconds(bpm);
   const durationQuarters = durationSeconds / quarter;
-  const hits = buildBassHits(key, durationQuarters, bpm, harmonicStartQuarters);
+  const hits = buildBassHits(timeline, durationQuarters, bpm);
 
   for (const hit of hits) {
     player.triggerAttackRelease(

@@ -7,8 +7,9 @@ import StaffCard from './components/StaffCard';
 import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
-import { buildDemoChain, DEMO_IDIOM_IDS } from './lib/demo-idioms';
+import { buildDemoChain, DEMO_IDIOM_IDS, isDefaultDemoChain } from './lib/demo-idioms';
 import { compInstrumentForMelody, compInstrumentLabel, iiViProgressionLabel } from './lib/comp';
+import { applyLineEndingNotes } from './lib/line-ending';
 import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
 import { type MixerChannel } from './lib/mixer';
 import {
@@ -47,7 +48,7 @@ import {
   setMixerLevels,
   stopPlayback,
 } from './lib/playback';
-import type { BoundaryJoin, ChainItem, Example, Note } from './types';
+import type { BoundaryJoin, ChainItem, Example, Note, RegisterJoin } from './types';
 import './App.css';
 
 const OCTAVE_MIN = -3;
@@ -149,10 +150,11 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [swing, setSwing] = useState(100);
   const [playing, setPlaying] = useState(false);
   const [lineLoop, setLineLoop] = useState(false);
-  const [backingEnabled, setBackingEnabled] = useState(false);
+  const [backingEnabled, setBackingEnabled] = useState(true);
   const [mixerDefaults] = useState(loadMixerDefaults);
   const [mixerLevels, setMixerLevelsState] = useState(loadMixerDefaults);
   const [showAllJoinIdioms, setShowAllJoinIdioms] = useState(false);
+  const [undoBatchSize, setUndoBatchSize] = useState(2);
   const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
 
@@ -185,7 +187,11 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     [compatible]
   );
 
-  const lineNotes = useMemo(() => flattenChain(chain), [chain]);
+  const lineNotes = useMemo(() => {
+    const notes = flattenChain(chain);
+    if (chain.length === 0) return notes;
+    return applyLineEndingNotes(notes, chain[0]?.example.pickupBeat);
+  }, [chain]);
 
   const lineStaffExample = useMemo((): Example | null => {
     if (chain.length === 0 || lineNotes.length === 0) return null;
@@ -203,7 +209,8 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       notes: Example['notes'],
       loop = false,
       withBacking = false,
-      pickupBeat?: number
+      pickupBeat?: number,
+      backingChain?: ChainItem[]
     ) => {
       setPlaying(true);
       await playNotes(
@@ -213,7 +220,9 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         swing / 100,
         loop,
         undefined,
-        withBacking ? { key: selectedKey } : null,
+        withBacking && backingChain && backingChain.length > 0
+          ? { key: selectedKey, chain: backingChain, pickupBeat }
+          : null,
         pickupBeat
       );
     },
@@ -268,7 +277,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handlePlayChain = () => {
     if (lineNotes.length === 0) return;
-    void play(lineNotes, lineLoop, backingEnabled, chain[0]?.example.pickupBeat);
+    void play(
+      lineNotes,
+      lineLoop,
+      backingEnabled,
+      chain[0]?.example.pickupBeat,
+      chain
+    );
   };
 
   const handleAdd = (example: Example) => {
@@ -278,6 +293,16 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handleRemoveLast = () => {
     setChain((prev) => prev.slice(0, -1));
+  };
+
+  const handleRemoveLastN = () => {
+    setChain((prev) => prev.slice(0, Math.max(0, prev.length - undoBatchSize)));
+  };
+
+  const adjustUndoBatchSize = (delta: number) => {
+    setUndoBatchSize((count) =>
+      Math.min(chain.length, Math.max(1, count + delta))
+    );
   };
 
   const handleClear = () => {
@@ -320,6 +345,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     if (index <= 0) return;
     setChain((prev) =>
       prev.map((item, i) => (i === index ? { ...item, boundaryJoin: mode } : item))
+    );
+  };
+
+  const setRegisterJoin = (index: number, mode: RegisterJoin) => {
+    if (index <= 0) return;
+    setChain((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, registerJoin: mode } : item))
     );
   };
 
@@ -372,12 +404,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   }, [chain.length]);
 
   useEffect(() => {
+    setUndoBatchSize((count) => Math.min(chain.length, Math.max(1, count)));
+  }, [chain.length]);
+
+  useEffect(() => {
     if (demoMode) {
       setChain((prev) => {
-        const isDemoLine =
-          prev.length === 2 &&
-          prev[0]?.example.id === DEMO_IDIOM_IDS[0] &&
-          prev[1]?.example.id === DEMO_IDIOM_IDS[1];
+        const isDemoLine = isDefaultDemoChain(prev);
         if (prev.length === 0 || isDemoLine) {
           return buildDemoChain(idioms);
         }
@@ -556,11 +589,45 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
               >
                 𝄞
               </button>
-              <button type="button" className="btn btn--ghost" onClick={handleRemoveLast}>
-                Undo
-              </button>
+              <div className="chain-panel__undo-column">
+                <button type="button" className="btn btn--ghost" onClick={handleRemoveLast}>
+                  Undo
+                </button>
+                <div className="chain-panel__undo-batch" aria-label="Undo multiple entries">
+                  <span className="chain-panel__undo-batch-label">Last</span>
+                  <div className="chain-panel__undo-batch-controls">
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--icon"
+                      onClick={() => adjustUndoBatchSize(-1)}
+                      disabled={undoBatchSize <= 1}
+                      aria-label="Undo one fewer entry"
+                    >
+                      −
+                    </button>
+                    <span className="octave-control__value">{undoBatchSize}</span>
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--icon"
+                      onClick={() => adjustUndoBatchSize(1)}
+                      disabled={undoBatchSize >= chain.length}
+                      aria-label="Undo one more entry"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--undo-batch"
+                    onClick={handleRemoveLastN}
+                    disabled={undoBatchSize <= 0 || chain.length === 0}
+                  >
+                    Undo {undoBatchSize}
+                  </button>
+                </div>
+              </div>
               <button type="button" className="btn btn--ghost" onClick={handleClear}>
-                Clear
+                Clear All
               </button>
             </div>
           )}
@@ -573,99 +640,165 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           </p>
         ) : (
           <>
-            <ol className="chain-list">
-              {chain.map((item, i) => (
-                <li key={`${item.example.id}-${i}`}>
-                  <span className="chain-list__index">{i + 1}</span>
-                  <div className="chain-list__label-row">
-                    <span className="chain-list__label">{item.example.label}</span>
-                    <span className="chain-list__pitches">
+            <div className="chain-table" role="table" aria-label="Your line">
+              <div className="chain-table__head" role="row">
+                <span className="chain-table__th chain-table__th--num" role="columnheader">
+                  #
+                </span>
+                <span className="chain-table__th chain-table__th--idiom" role="columnheader">
+                  Idiom
+                </span>
+                <span className="chain-table__th chain-table__th--range" role="columnheader">
+                  Range
+                </span>
+                <span className="chain-table__th" role="columnheader">
+                  Entry
+                </span>
+                <span className="chain-table__th" role="columnheader">
+                  Start
+                </span>
+                <span className="chain-table__th" role="columnheader">
+                  Octave
+                </span>
+                <span className="chain-table__th chain-table__th--join" role="columnheader">
+                  Switch Joined Notes
+                </span>
+              </div>
+              <ol className="chain-list" role="rowgroup">
+                {chain.map((item, i) => (
+                  <li key={`${item.example.id}-${i}`} className="chain-table__row" role="row">
+                    <span className="chain-list__index" role="cell">
+                      {i + 1}
+                    </span>
+                    <span className="chain-list__label" role="cell">
+                      {item.example.label}
+                    </span>
+                    <span className="chain-table__range" role="cell">
                       {formatPitchClass(startPitchClass(item.example))} →{' '}
                       {formatPitchClass(endPitchClass(item.example))}
                     </span>
-                  </div>
-                  <div className="chain-list__controls">
-                    {i > 0 && (
+                    <div className="chain-table__cell" role="cell">
+                      {i > 0 ? (
+                        <div
+                          className="chain-table__switches beat-offset-control"
+                          aria-label={`Entry offset for ${item.example.label}`}
+                        >
+                          <button
+                            type="button"
+                            className="btn btn--ghost btn--icon"
+                            onClick={() => adjustBeatOffset(i, -1)}
+                            disabled={(item.beatOffset ?? 0) <= BEAT_OFFSET_MIN}
+                            aria-label={`Enter ${item.example.label} one beat later`}
+                          >
+                            −
+                          </button>
+                          <span
+                            className="octave-control__value"
+                            data-tooltip={(() => {
+                              const offset = item.beatOffset ?? 0;
+                              if (offset > 0) {
+                                return `Enters ${offset} beat${
+                                  offset === 1 ? '' : 's'
+                                } earlier — strips pickup rests first, then overlaps the prior idiom if needed`;
+                              }
+                              if (offset < 0) {
+                                return `Waits ${Math.abs(offset)} beat${
+                                  offset === -1 ? '' : 's'
+                                } after the previous idiom before starting`;
+                              }
+                              return 'Joins sequentially as written (includes any pickup rests)';
+                            })()}
+                          >
+                            {(item.beatOffset ?? 0) > 0
+                              ? `+${item.beatOffset}`
+                              : (item.beatOffset ?? 0) < 0
+                                ? `${item.beatOffset}`
+                                : '0'}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn--ghost btn--icon"
+                            onClick={() => adjustBeatOffset(i, 1)}
+                            disabled={(item.beatOffset ?? 0) >= BEAT_OFFSET_MAX}
+                            aria-label={`Enter ${item.example.label} one beat earlier`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="chain-table__placeholder" aria-hidden="true">
+                          —
+                        </span>
+                      )}
+                    </div>
+                    <div className="chain-table__cell" role="cell">
+                      {i > 0 ? (
+                        <div
+                          className="chain-table__switches"
+                          role="group"
+                          aria-label={`Starting register for ${item.example.label}`}
+                        >
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--boundary${
+                              (item.registerJoin ?? 'align') === 'align' ? ' btn--toggle-on' : ''
+                            }`}
+                            onClick={() => setRegisterJoin(i, 'align')}
+                            aria-pressed={(item.registerJoin ?? 'align') === 'align'}
+                            data-tooltip="Transpose to match the prior ending octave when pitch classes match"
+                          >
+                            Align
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--boundary${
+                              item.registerJoin === 'asWritten' ? ' btn--toggle-on' : ''
+                            }`}
+                            onClick={() => setRegisterJoin(i, 'asWritten')}
+                            aria-pressed={item.registerJoin === 'asWritten'}
+                            data-tooltip="Keep this idiom in written register — matching boundary pitches play in both octaves"
+                          >
+                            Written
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="chain-table__placeholder" aria-hidden="true">
+                          —
+                        </span>
+                      )}
+                    </div>
+                    <div className="chain-table__cell" role="cell">
                       <div
-                        className="beat-offset-control"
-                        aria-label={`Entry offset for ${item.example.label}`}
+                        className="chain-table__switches"
+                        aria-label={`Octave for ${item.example.label}`}
                       >
-                        <span className="octave-control__label">Entry</span>
                         <button
                           type="button"
                           className="btn btn--ghost btn--icon"
-                          onClick={() => adjustBeatOffset(i, -1)}
-                          disabled={(item.beatOffset ?? 0) <= BEAT_OFFSET_MIN}
-                          aria-label={`Enter ${item.example.label} one beat later`}
+                          onClick={() => adjustItemOctave(i, -1)}
+                          disabled={item.octave <= OCTAVE_MIN}
+                          aria-label={`Lower ${item.example.label} one octave`}
                         >
                           −
                         </button>
-                        <span
-                          className="octave-control__value"
-                          data-tooltip={(() => {
-                            const offset = item.beatOffset ?? 0;
-                            if (offset > 0) {
-                              return `Enters ${offset} beat${
-                                offset === 1 ? '' : 's'
-                              } earlier — strips pickup rests first, then overlaps the prior idiom if needed`;
-                            }
-                            if (offset < 0) {
-                              return `Waits ${Math.abs(offset)} beat${
-                                offset === -1 ? '' : 's'
-                              } after the previous idiom before starting`;
-                            }
-                            return 'Joins sequentially as written (includes any pickup rests)';
-                          })()}
-                        >
-                          {(item.beatOffset ?? 0) > 0
-                            ? `+${item.beatOffset}`
-                            : (item.beatOffset ?? 0) < 0
-                              ? `${item.beatOffset}`
-                              : '0'}
+                        <span className="octave-control__value">
+                          {item.octave > 0 ? `+${item.octave}` : item.octave}
                         </span>
                         <button
                           type="button"
                           className="btn btn--ghost btn--icon"
-                          onClick={() => adjustBeatOffset(i, 1)}
-                          disabled={(item.beatOffset ?? 0) >= BEAT_OFFSET_MAX}
-                          aria-label={`Enter ${item.example.label} one beat earlier`}
+                          onClick={() => adjustItemOctave(i, 1)}
+                          disabled={item.octave >= OCTAVE_MAX}
+                          aria-label={`Raise ${item.example.label} one octave`}
                         >
                           +
                         </button>
                       </div>
-                    )}
-                    <div className="octave-control octave-control--inline" aria-label="Octave">
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--icon"
-                      onClick={() => adjustItemOctave(i, -1)}
-                      disabled={item.octave <= OCTAVE_MIN}
-                      aria-label={`Lower ${item.example.label} one octave`}
-                    >
-                      −
-                    </button>
-                    <span className="octave-control__value">
-                      {item.octave > 0 ? `+${item.octave}` : item.octave}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--icon"
-                      onClick={() => adjustItemOctave(i, 1)}
-                      disabled={item.octave >= OCTAVE_MAX}
-                      aria-label={`Raise ${item.example.label} one octave`}
-                    >
-                      +
-                    </button>
-                  </div>
-                  </div>
-                  {i < chain.length - 1 && (
-                    <>
-                      <span className="chain-list__join">
-                        ↳ {formatPitchClass(endPitchClass(item.example))}
-                      </span>
-                      {canJoin(item.example, chain[i + 1].example) && (
+                    </div>
+                    <div className="chain-table__cell chain-table__cell--join" role="cell">
+                      {i < chain.length - 1 && canJoin(item.example, chain[i + 1].example) ? (
                         <div
-                          className="chain-list__boundary"
+                          className="chain-table__switches"
                           role="group"
                           aria-label={`Shared note with ${chain[i + 1].example.label}`}
                         >
@@ -678,7 +811,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                             }`}
                             onClick={() => setBoundaryJoin(i + 1, 'merge')}
                             aria-pressed={(chain[i + 1].boundaryJoin ?? 'merge') === 'merge'}
-                            data-tooltip="Shared note plays once — the line continues without repeating it"
+                            data-tooltip="With Align: shared note plays once. With Written: both boundary notes are kept."
                           >
                             Once
                           </button>
@@ -694,12 +827,20 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                             Both
                           </button>
                         </div>
+                      ) : i < chain.length - 1 ? (
+                        <span className="chain-table__join-note">
+                          ↳ {formatPitchClass(endPitchClass(item.example))}
+                        </span>
+                      ) : (
+                        <span className="chain-table__placeholder" aria-hidden="true">
+                          —
+                        </span>
                       )}
-                    </>
-                  )}
-                </li>
-              ))}
-            </ol>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
             {chainEnd && compatible.length > 0 && (
               <p className="join-hint">
                 Ends on <strong>{formatPitchClass(chainEnd)}</strong> —{' '}
