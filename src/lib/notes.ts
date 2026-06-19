@@ -338,7 +338,11 @@ export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
       }
     }
 
-    if (sharesBoundary && (curr.registerJoin ?? 'align') === 'align') {
+    if (
+      sharesBoundary &&
+      (curr.registerJoin ?? 'align') === 'align' &&
+      (curr.entryRhythm ?? 'asWritten') === 'triplet'
+    ) {
       const prevEnding = soundingNotes(items[i - 1].example.notes).at(-1);
       if (prevEnding) {
         notesToAdd = matchBoundaryEntryDuration(notesToAdd, prevEnding);

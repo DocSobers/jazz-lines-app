@@ -7,7 +7,8 @@ import StaffCard from './components/StaffCard';
 import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
-import { buildDemoChain, DEMO_IDIOM_IDS, isDefaultDemoChain } from './lib/demo-idioms';
+import CollapsibleSectionHeading from './components/CollapsibleSectionHeading';
+import { applyDemoIdiomOverrides, buildDemoChain, buildDemoChainWithResolution, DEMO_IDIOM_IDS, DEMO_RESOLUTION_ID, isDefaultDemoChain, isDemoChainWithResolution, isDemoResolutionPending } from './lib/demo-idioms';
 import { compInstrumentForMelody, compInstrumentLabel, iiViProgressionLabel } from './lib/comp';
 import { applyLineEndingNotes } from './lib/line-ending';
 import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
@@ -31,6 +32,7 @@ import {
   endPitchClass,
   flattenChain,
   formatPitchClass,
+  notesDurationQuarters,
   prependPickup,
   startPitchClass,
   transposeExample,
@@ -48,7 +50,7 @@ import {
   setMixerLevels,
   stopPlayback,
 } from './lib/playback';
-import type { BoundaryJoin, ChainItem, Example, Note, RegisterJoin } from './types';
+import type { BoundaryJoin, ChainItem, EntryRhythm, Example, Note, RegisterJoin } from './types';
 import './App.css';
 
 const OCTAVE_MIN = -3;
@@ -62,6 +64,82 @@ const SECTION_LABELS: Record<(typeof IDIOM_SECTIONS)[number], string> = {
   'I-maj': 'I maj',
 };
 
+function joinPitchLabel(prev: Example, next: Example): string {
+  const end = formatPitchClass(endPitchClass(prev));
+  const start = formatPitchClass(startPitchClass(next));
+  return endPitchClass(prev) === startPitchClass(next)
+    ? `${end} (shared)`
+    : `${end} → ${start}`;
+}
+
+function describeChainJoin(prev: ChainItem, curr: ChainItem): {
+  details: string[];
+  tip?: string;
+} {
+  const shared = endPitchClass(prev.example) === startPitchClass(curr.example);
+  const details: string[] = [`${joinPitchLabel(prev.example, curr.example)}`];
+
+  if (shared) {
+    details.push(
+      (curr.boundaryJoin ?? 'merge') === 'merge'
+        ? 'Once — the boundary note sounds a single time'
+        : 'Both — the boundary note plays in each idiom’s register'
+    );
+  }
+
+  details.push(
+    (curr.registerJoin ?? 'align') === 'align'
+      ? 'Align — transpose to the prior ending octave'
+      : 'Written — keep this idiom in its written register'
+  );
+
+  if (shared && (curr.registerJoin ?? 'align') === 'align') {
+    details.push(
+      (curr.entryRhythm ?? 'asWritten') === 'triplet'
+        ? 'End As Triplet — first note length matches the prior ending'
+        : 'As Written rhythm — keep this idiom’s note lengths at the join'
+    );
+  }
+
+  const offset = curr.beatOffset ?? 0;
+  if (offset > 0) {
+    details.push(
+      `Entry +${offset} — enter ${offset} beat${offset === 1 ? '' : 's'} earlier (strips pickup rests first)`
+    );
+  } else if (offset < 0) {
+    const wait = Math.abs(offset);
+    details.push(
+      `Entry ${offset} — pad ${wait} beat${wait === 1 ? '' : 's'} after the prior idiom`
+    );
+  }
+
+  if (curr.octave !== 0) {
+    details.push(
+      `Octave ${curr.octave > 0 ? '+' : ''}${curr.octave} on this idiom`
+    );
+  }
+
+  if (
+    curr.example.section === 'V-I' &&
+    (curr.registerJoin ?? 'align') === 'align'
+  ) {
+    details.push('V–I leading rests removed so the phrase enters immediately');
+  }
+
+  let tip: string | undefined;
+  if (
+    prev.example.id === 'idiom_ii_v_n3' &&
+    curr.example.id === 'idiom_ii_v_n24' &&
+    curr.registerJoin === 'asWritten' &&
+    curr.octave === 0
+  ) {
+    tip =
+      'Try Octave +1 on II–V #24 to keep the phrase in the same register as II–V #3 (Written plays B5 then B4 at the join).';
+  }
+
+  return { details, tip };
+}
+
 function ExampleCard({
   example,
   onPlay,
@@ -73,6 +151,7 @@ function ExampleCard({
   inLine,
   highlight,
   edited,
+  demoPrompt,
 }: {
   example: Example;
   onPlay: () => void;
@@ -84,13 +163,16 @@ function ExampleCard({
   inLine?: boolean;
   highlight?: boolean;
   edited?: boolean;
+  demoPrompt?: boolean;
 }) {
   const start = startPitchClass(example);
   const end = endPitchClass(example);
 
   return (
     <article
-      className={`example-card ${highlight ? 'example-card--highlight' : ''}`}
+      className={`example-card${highlight ? ' example-card--highlight' : ''}${
+        demoPrompt ? ' example-card--demo-prompt' : ''
+      }`}
     >
       <div className="example-card__header">
         <span className="example-card__section">{example.section}</span>
@@ -155,6 +237,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [mixerLevels, setMixerLevelsState] = useState(loadMixerDefaults);
   const [showAllJoinIdioms, setShowAllJoinIdioms] = useState(false);
   const [undoBatchSize, setUndoBatchSize] = useState(2);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
 
@@ -162,7 +245,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     const all = applyEdits(JAZZ_IDIOMS, edits);
     if (!demoMode) return all;
     const allowed = new Set<string>(DEMO_IDIOM_IDS);
-    return all.filter((e) => allowed.has(e.id));
+    return applyDemoIdiomOverrides(all.filter((e) => allowed.has(e.id)));
   }, [edits, demoMode]);
 
   const transposeSemitones = useMemo(
@@ -187,6 +270,26 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     [compatible]
   );
 
+  const demoResolutionPending = demoMode && isDemoResolutionPending(chain);
+  const demoResolutionExample = useMemo(
+    () => idioms.find((e) => e.id === DEMO_RESOLUTION_ID) ?? null,
+    [idioms]
+  );
+
+  const toggleSectionCollapsed = (sectionId: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  };
+
+  const isSectionCollapsed = (sectionId: string) => {
+    if (
+      demoResolutionPending &&
+      (sectionId === 'I-maj' || sectionId === 'compatible')
+    ) {
+      return false;
+    }
+    return collapsedSections[sectionId] ?? false;
+  };
+
   const lineNotes = useMemo(() => {
     const notes = flattenChain(chain);
     if (chain.length === 0) return notes;
@@ -197,7 +300,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     if (chain.length === 0 || lineNotes.length === 0) return null;
     return {
       id: '__line__',
-      section: 'Your line',
+      section: 'Your Jazz Line',
       number: '',
       label: chain.map((item) => item.example.label).join(' · '),
       notes: lineNotes,
@@ -355,6 +458,13 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     );
   };
 
+  const setEntryRhythm = (index: number, mode: EntryRhythm) => {
+    if (index <= 0) return;
+    setChain((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, entryRhythm: mode } : item))
+    );
+  };
+
   const handleMixerChange = (channel: MixerChannel, value: number) => {
     setMixerLevelsState((prev) => {
       const next = { ...prev, [channel]: value };
@@ -376,6 +486,10 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   useEffect(() => {
     setMixerLevels(mixerLevels);
   }, [mixerLevels, instrument]);
+
+  useEffect(() => {
+    if (demoMode) setShowAllJoinIdioms(false);
+  }, [demoMode]);
 
   useEffect(() => {
     preloadAllInstruments(instrument);
@@ -410,9 +524,11 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   useEffect(() => {
     if (demoMode) {
       setChain((prev) => {
-        const isDemoLine = isDefaultDemoChain(prev);
-        if (prev.length === 0 || isDemoLine) {
+        if (prev.length === 0 || isDefaultDemoChain(prev)) {
           return buildDemoChain(idioms);
+        }
+        if (isDemoChainWithResolution(prev)) {
+          return buildDemoChainWithResolution(idioms);
         }
         return prev.map((item) => {
           const base = baseIdioms.find((e) => e.id === item.example.id);
@@ -467,6 +583,119 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     [chain]
   );
 
+  const lineDescription = useMemo(() => {
+    if (chain.length === 0) {
+      return (
+        <>
+          Chain idioms whose <strong>last note</strong> matches the{' '}
+          <strong>next idiom&apos;s first note</strong>. Each row sets how that join behaves — entry
+          timing, starting register, rhythm at the boundary, and whether the shared pitch plays once
+          or twice.
+        </>
+      );
+    }
+
+    const labels = chain.map((item) => item.example.label).join(' → ');
+    const sections = chain.map(
+      (item) => SECTION_LABELS[item.example.section as keyof typeof SECTION_LABELS] ?? item.example.section
+    );
+    const sectionFlow = sections.filter((s, i) => i === 0 || sections[i - 1] !== s).join(' → ');
+    const durationQuarters = notesDurationQuarters(lineNotes);
+    const barCount = Math.max(1, Math.ceil(durationQuarters / 4));
+    const pickup = chain[0].example.pickupBeat;
+    const first = chain[0];
+
+    return (
+      <>
+        <p className="chain-panel__summary-lead">
+          <strong>{labels}</strong> in <strong>{selectedKey}</strong> — {chain.length} idiom
+          {chain.length === 1 ? '' : 's'} ({sectionFlow}) over about {barCount} bar
+          {barCount === 1 ? '' : 's'}.
+        </p>
+
+        {(pickup != null && pickup > 0) || first.octave !== 0 ? (
+          <p className="chain-panel__summary-section">
+            <strong>Opening:</strong>{' '}
+            {pickup != null && pickup > 0
+              ? 'Pickup before bar 1 — count-in clicks through the pickup rest, then melody enters on the & of beat 4; backing waits until bar 2.'
+              : null}
+            {pickup != null && pickup > 0 && first.octave !== 0 ? ' ' : null}
+            {first.octave !== 0
+              ? `First idiom shifted ${first.octave > 0 ? '+' : ''}${first.octave} octave.`
+              : null}
+          </p>
+        ) : null}
+
+        {chain.length > 1 ? (
+          <div className="chain-panel__summary-section">
+            <strong>Joins:</strong>
+            <ul className="chain-panel__summary-list">
+              {chain.slice(1).map((item, i) => {
+                const { details, tip } = describeChainJoin(chain[i], item);
+                return (
+                  <li key={`${item.example.id}-${i + 1}`}>
+                    <strong>
+                      {chain[i].example.label} → {item.example.label}:
+                    </strong>{' '}
+                    {details.join(' · ')}
+                    {tip ? <span className="chain-panel__summary-tip"> {tip}</span> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+
+        <p
+          className={`chain-panel__summary-section chain-panel__summary-section--progression${
+            nextProgressionSection && !hasFullProgression
+              ? ' chain-panel__summary-section--progression-action'
+              : ''
+          }`}
+        >
+          <strong>Progression:</strong>{' '}
+          {hasFullProgression
+            ? 'Complete ii–V–I — all three sections are represented in this line.'
+            : nextProgressionSection
+              ? `Partial ii–V–I — add a ${SECTION_LABELS[nextProgressionSection]} idiom next to complete the cycle.`
+              : 'Mixed sections — not following the standard ii–V–I order, or the line extends past I maj.'}
+        </p>
+
+        <p className="chain-panel__summary-section">
+          <strong>Ending:</strong> Last sounding pitch{' '}
+          <strong>{chainEnd && formatPitchClass(chainEnd)}</strong>
+          {lineNotes.some((n) => n.fermata)
+            ? ' — held through the resolution bar with a fermata when you play the line.'
+            : '.'}
+        </p>
+
+        <p className="chain-panel__summary-section">
+          <strong>Playback:</strong>{' '}
+          {backingEnabled ? (
+            <>
+              Backing on — {compInstrumentLabel(instrument)} comp, electric bass, and drums follow{' '}
+              {iiViProgressionLabel(selectedKey)} on a strict four-bar grid; comp and bass hold I on
+              beat 1 of the resolution bar for three beats, drums stop before that bar.
+            </>
+          ) : (
+            <>Melody only — turn Backing on for comp, bass, and drums in {selectedKey}.</>
+          )}
+          {lineLoop ? ' Loop repeats the full line with a short rest between passes.' : null}
+        </p>
+      </>
+    );
+  }, [
+    chain,
+    selectedKey,
+    hasFullProgression,
+    nextProgressionSection,
+    backingEnabled,
+    chainEnd,
+    lineNotes,
+    instrument,
+    lineLoop,
+  ]);
+
   return (
     <div className={`app${demoMode ? ' app--demo' : ''}`}>
       <NavBar edits={edits} clerkEnabled={clerkEnabled} isAdmin={canEdit} />
@@ -477,7 +706,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           <h1>Jazz Lines Player</h1>
           <p className="subtitle">
             {demoMode
-              ? 'Try the demo ii–V–I line (II–V #3 → #24 → V–I #1a) with Play line — sign up to unlock all idioms'
+              ? 'Demo line: II–V #3 → #24 → V–I #1a — then add I-maj #4 as the resolution tag'
               : 'Build a full ii–V–I line across sections, or chain any idioms freely'}
           </p>
         </div>
@@ -577,7 +806,10 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
       <section className="chain-panel">
         <div className="chain-panel__top">
-          <h2>Your line</h2>
+          <div className="chain-panel__intro">
+            <h2>Your Jazz Line</h2>
+            <p className="chain-panel__summary">{lineDescription}</p>
+          </div>
           {chain.length > 0 && (
             <div className="chain-panel__actions">
               <button
@@ -640,7 +872,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           </p>
         ) : (
           <>
-            <div className="chain-table" role="table" aria-label="Your line">
+            <div className="chain-table" role="table" aria-label="Your Jazz Line">
               <div className="chain-table__head" role="row">
                 <span className="chain-table__th chain-table__th--num" role="columnheader">
                   #
@@ -656,6 +888,9 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                 </span>
                 <span className="chain-table__th" role="columnheader">
                   Start
+                </span>
+                <span className="chain-table__th" role="columnheader">
+                  Rhythm
                 </span>
                 <span className="chain-table__th" role="columnheader">
                   Octave
@@ -768,6 +1003,44 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                       )}
                     </div>
                     <div className="chain-table__cell" role="cell">
+                      {i > 0 ? (
+                        <div
+                          className="chain-table__switches"
+                          role="group"
+                          aria-label={`Entry rhythm for ${item.example.label}`}
+                        >
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--boundary${
+                              (item.entryRhythm ?? 'asWritten') === 'asWritten'
+                                ? ' btn--toggle-on'
+                                : ''
+                            }`}
+                            onClick={() => setEntryRhythm(i, 'asWritten')}
+                            aria-pressed={(item.entryRhythm ?? 'asWritten') === 'asWritten'}
+                            data-tooltip="Keep this idiom's written rhythm at the join"
+                          >
+                            As Written
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn--ghost btn--boundary${
+                              item.entryRhythm === 'triplet' ? ' btn--toggle-on' : ''
+                            }`}
+                            onClick={() => setEntryRhythm(i, 'triplet')}
+                            aria-pressed={item.entryRhythm === 'triplet'}
+                            data-tooltip="Match first note length to the prior ending (triplet entry)"
+                          >
+                            End As Triplet
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="chain-table__placeholder" aria-hidden="true">
+                          —
+                        </span>
+                      )}
+                    </div>
+                    <div className="chain-table__cell" role="cell">
                       <div
                         className="chain-table__switches"
                         aria-label={`Octave for ${item.example.label}`}
@@ -781,7 +1054,18 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                         >
                           −
                         </button>
-                        <span className="octave-control__value">
+                        <span
+                          className="octave-control__value"
+                          data-tooltip={
+                            item.example.id === 'idiom_ii_v_n24' &&
+                            i > 0 &&
+                            chain[i - 1]?.example.id === 'idiom_ii_v_n3' &&
+                            item.registerJoin === 'asWritten' &&
+                            item.octave === 0
+                              ? 'Octave +1 keeps II–V #24 in the same register as II–V #3'
+                              : undefined
+                          }
+                        >
                           {item.octave > 0 ? `+${item.octave}` : item.octave}
                         </span>
                         <button
@@ -790,6 +1074,15 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                           onClick={() => adjustItemOctave(i, 1)}
                           disabled={item.octave >= OCTAVE_MAX}
                           aria-label={`Raise ${item.example.label} one octave`}
+                          data-tooltip={
+                            item.example.id === 'idiom_ii_v_n24' &&
+                            i > 0 &&
+                            chain[i - 1]?.example.id === 'idiom_ii_v_n3' &&
+                            item.registerJoin === 'asWritten' &&
+                            item.octave === 0
+                              ? 'Shift II–V #24 up to match II–V #3’s register'
+                              : undefined
+                          }
                         >
                           +
                         </button>
@@ -841,6 +1134,18 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                 ))}
               </ol>
             </div>
+            {demoResolutionPending && demoResolutionExample && (
+              <div className="demo-resolution-callout" role="note">
+                <p>
+                  <strong>Next step — I maj resolution:</strong> V–I #1a ends on{' '}
+                  <strong>{formatPitchClass(endPitchClass(chain[chain.length - 1].example))}</strong>.
+                  Scroll to the <strong>I maj</strong> section and use{' '}
+                  <strong>Add to line</strong> on <strong>{demoResolutionExample.label}</strong> to
+                  complete the phrase. Leave <strong>Rhythm</strong> on{' '}
+                  <strong>As Written</strong> so the tag keeps its swung feel at the join.
+                </p>
+              </div>
+            )}
             {chainEnd && compatible.length > 0 && (
               <p className="join-hint">
                 Ends on <strong>{formatPitchClass(chainEnd)}</strong> —{' '}
@@ -871,20 +1176,30 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       {chain.length > 0 && (
         <section className="compatible-section">
           <div className="compatible-section__top">
-            <h2>Can join next</h2>
-            <button
-              type="button"
-              className={`btn btn--ghost btn--toggle ${showAllJoinIdioms ? 'btn--toggle-on' : ''}`}
-              onClick={() => setShowAllJoinIdioms((prev) => !prev)}
-              aria-pressed={showAllJoinIdioms}
-            >
-              Show all
-            </button>
+            <CollapsibleSectionHeading
+              title="Can join next"
+              collapsed={isSectionCollapsed('compatible')}
+              onToggle={() => toggleSectionCollapsed('compatible')}
+              className="compatible-section__heading"
+            />
+            {!demoMode && (
+              <button
+                type="button"
+                className={`btn btn--ghost btn--toggle ${showAllJoinIdioms ? 'btn--toggle-on' : ''}`}
+                onClick={() => setShowAllJoinIdioms((prev) => !prev)}
+                aria-pressed={showAllJoinIdioms}
+              >
+                Show all
+              </button>
+            )}
           </div>
+          {!isSectionCollapsed('compatible') && (
           <div className="example-grid">
-            {(showAllJoinIdioms ? idioms : compatible).map((example) => {
+            {(showAllJoinIdioms && !demoMode ? idioms : compatible).map((example) => {
               const inChain = chain.some((item) => item.example.id === example.id);
               const canJoin = compatibleIds.has(example.id);
+              const demoPrompt =
+                demoResolutionPending && example.id === DEMO_RESOLUTION_ID;
               return (
                 <ExampleCard
                   key={example.id}
@@ -896,16 +1211,28 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                   canAdd={!inChain}
                   canEdit={canEdit}
                   inLine={inChain}
-                  highlight={canJoin && !showAllJoinIdioms}
+                  highlight={(canJoin && !showAllJoinIdioms) || demoPrompt}
+                  demoPrompt={demoPrompt}
                   edited={Boolean(edits[example.id])}
                 />
               );
             })}
           </div>
-          {!showAllJoinIdioms && compatible.length === 0 && (
+          )}
+          {!isSectionCollapsed('compatible') && !showAllJoinIdioms && compatible.length === 0 && (
             <p className="join-hint join-hint--none">
-              No idioms start on <strong>{chainEnd && formatPitchClass(chainEnd)}</strong> — use{' '}
-              <strong>Show all</strong> to browse every idiom.
+              {demoMode ? (
+                <>
+                  No demo idioms start on{' '}
+                  <strong>{chainEnd && formatPitchClass(chainEnd)}</strong> — browse the section
+                  lists below.
+                </>
+              ) : (
+                <>
+                  No idioms start on <strong>{chainEnd && formatPitchClass(chainEnd)}</strong> —
+                  use <strong>Show all</strong> to browse every idiom.
+                </>
+              )}
             </p>
           )}
         </section>
@@ -915,24 +1242,42 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         const sectionExamples = idioms.filter((e) => e.section === section);
         if (sectionExamples.length === 0) return null;
         const isNextInProgression = nextProgressionSection === section && chain.length > 0;
+        const isDemoResolutionSection = demoResolutionPending && section === 'I-maj';
+        const sectionCollapsed = isSectionCollapsed(section);
 
         return (
           <section
             key={section}
-            className={`page-section ${isNextInProgression ? 'page-section--next' : ''}`}
+            className={`page-section ${isNextInProgression || isDemoResolutionSection ? 'page-section--next' : ''}`}
           >
-            <h2>{SECTION_LABELS[section]} idioms</h2>
-            {isNextInProgression && (
+            <CollapsibleSectionHeading
+              title={`${SECTION_LABELS[section]} idioms`}
+              collapsed={sectionCollapsed}
+              onToggle={() => toggleSectionCollapsed(section)}
+            />
+            {!sectionCollapsed && isNextInProgression && (
               <p className="section-hint">Suggested next in ii–V–I</p>
             )}
+            {!sectionCollapsed && isDemoResolutionSection && (
+              <div className="demo-resolution-callout demo-resolution-callout--section" role="note">
+                <p>
+                  Add <strong>I-maj #4</strong> below as your <strong>I maj resolution</strong> — it
+                  joins on E where V–I #1a ends. Click <strong>Add to line</strong> on the
+                  highlighted card to extend the demo phrase.
+                </p>
+              </div>
+            )}
+            {!sectionCollapsed && (
             <div className="example-grid">
               {sectionExamples.map((example) => {
                 const inChain = chain.some((item) => item.example.id === example.id);
                 const matchesNext =
                   chain.length > 0 && compatibleIds.has(example.id);
+                const demoPrompt =
+                  demoResolutionPending && example.id === DEMO_RESOLUTION_ID;
 
-                if (showAllJoinIdioms && chain.length > 0) return null;
-                if (matchesNext && !inChain) return null;
+                if (showAllJoinIdioms && chain.length > 0 && !demoPrompt) return null;
+                if (matchesNext && !inChain && !demoPrompt) return null;
 
                 return (
                   <ExampleCard
@@ -945,11 +1290,14 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                     canAdd={!inChain}
                     canEdit={canEdit}
                     inLine={inChain}
+                    highlight={demoPrompt}
+                    demoPrompt={demoPrompt}
                     edited={Boolean(edits[example.id])}
                   />
                 );
               })}
             </div>
+            )}
           </section>
         );
       })}

@@ -26,6 +26,9 @@ export type BoundaryJoin = 'merge' | 'restate';
 /** Whether the next idiom auto-aligns octave to the prior ending note at a shared pitch. */
 export type RegisterJoin = 'align' | 'asWritten';
 
+/** At a shared boundary, match the first note length to the prior ending (triplet entry). */
+export type EntryRhythm = 'asWritten' | 'triplet';
+
 export interface ChainItem {
   example: Example;
   /** Whole-octave shift applied to this idiom in the line */
@@ -34,6 +37,8 @@ export interface ChainItem {
   boundaryJoin?: BoundaryJoin;
   /** Keep written register at join; shared boundary notes sound in each idiom's octave (no Once drop). */
   registerJoin?: RegisterJoin;
+  /** Match first note duration to prior ending at join (triplet feel); default keeps idiom rhythm. */
+  entryRhythm?: EntryRhythm;
   /** Quarter-beat entry shift when chaining: positive = earlier, negative = later (pad). */
   beatOffset?: number;
 }

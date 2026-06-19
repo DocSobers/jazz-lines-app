@@ -521,13 +521,94 @@ a.btn {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.chain-panel h2,
-.page-section h2,
-.compatible-section h2 {
+.chain-panel__intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.chain-panel__summary {
+  flex: 1;
+  min-width: min(100%, 24rem);
   margin: 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.chain-panel__summary-lead {
+  margin: 0 0 0.55rem;
+}
+
+.chain-panel__summary-section {
+  margin: 0.55rem 0 0;
+}
+
+.chain-panel__summary-section:first-child {
+  margin-top: 0;
+}
+
+.chain-panel__summary-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.chain-panel__summary-list li {
+  margin-bottom: 0.35rem;
+}
+
+.chain-panel__summary-list li:last-child {
+  margin-bottom: 0;
+}
+
+.chain-panel__summary-tip {
+  display: block;
+  margin-top: 0.25rem;
+  color: color-mix(in srgb, var(--join) 70%, var(--text));
+  font-weight: 500;
+}
+
+.chain-panel__summary-section--progression {
+  color: color-mix(in srgb, var(--join) 55%, var(--muted));
+}
+
+.chain-panel__summary-section--progression strong {
+  color: var(--join);
+}
+
+.chain-panel__summary-section--progression-action {
+  color: color-mix(in srgb, var(--join) 72%, var(--text));
+  padding: 0.45rem 0.55rem;
+  margin-left: -0.55rem;
+  margin-right: -0.55rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--join) 8%, var(--surface-2));
+}
+
+.chain-panel__summary-section--progression-action strong {
+  color: var(--join);
+}
+
+.chain-panel__summary strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.chain-panel h2,
+.section-heading__label,
+.page-section .section-heading__label,
+.compatible-section .section-heading__label {
   font-family: var(--font);
   font-size: 1.15rem;
   font-weight: 600;
@@ -591,7 +672,7 @@ a.btn {
 }
 
 .chain-table {
-  --chain-table-cols: 2rem minmax(5.5rem, 1.15fr) 4.75rem 5.75rem 6.75rem 5.75rem 7.25rem;
+  --chain-table-cols: 2rem minmax(5.5rem, 1.15fr) 4.75rem 5.75rem 6.75rem 8.25rem 5.75rem 7.25rem;
   overflow-x: auto;
 }
 
@@ -826,7 +907,7 @@ a.btn {
   color: var(--join);
 }
 
-.page-section--next h2 {
+.page-section--next .section-heading__toggle {
   color: var(--join);
 }
 
@@ -834,6 +915,78 @@ a.btn {
   margin: -0.5rem 0 1rem;
   font-size: 0.85rem;
   color: var(--join);
+}
+
+.section-heading {
+  margin: 0;
+}
+
+.section-heading__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.compatible-section__heading .section-heading__toggle {
+  color: var(--join);
+}
+
+.page-section .section-heading__toggle {
+  color: var(--muted);
+}
+
+.page-section--next .section-heading__toggle {
+  color: var(--join);
+}
+
+.section-heading__chevron {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  margin-top: 1px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid currentColor;
+  transition: transform 0.15s ease;
+}
+
+.section-heading__chevron--open {
+  transform: rotate(90deg);
+}
+
+.demo-resolution-callout {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--join);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--join) 10%, var(--surface));
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.demo-resolution-callout--section {
+  margin-top: -0.35rem;
+}
+
+.demo-resolution-callout strong {
+  color: var(--join);
+}
+
+.example-card--demo-prompt {
+  border-color: var(--join);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--join) 35%, transparent);
 }
 
 .join-hint--none strong {
@@ -845,11 +998,6 @@ a.btn {
   margin-bottom: 2rem;
 }
 
-.compatible-section h2 {
-  color: var(--join);
-  margin: 0;
-}
-
 .compatible-section__top {
   display: flex;
   align-items: center;
@@ -859,9 +1007,12 @@ a.btn {
   margin-bottom: 1rem;
 }
 
-.page-section h2 {
+.page-section .section-heading {
   margin-bottom: 1rem;
-  color: var(--muted);
+}
+
+.compatible-section__top .section-heading {
+  margin-bottom: 0;
 }
 
 .example-grid {
