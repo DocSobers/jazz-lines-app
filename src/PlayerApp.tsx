@@ -8,7 +8,14 @@ import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
 import CollapsibleSectionHeading from './components/CollapsibleSectionHeading';
-import { applyDemoIdiomOverrides, buildDemoChain, buildDemoChainWithResolution, DEMO_IDIOM_IDS, DEMO_RESOLUTION_ID, isDefaultDemoChain, isDemoChainWithResolution, isDemoResolutionPending } from './lib/demo-idioms';
+import { buildDemoChain, buildDemoChainWithResolution, demoVi1aCardExample, DEMO_IDIOM_IDS, DEMO_RESOLUTION_ID, isDefaultDemoChain, isDemoChainWithResolution, isDemoResolutionPending, syncDemoChainExamples, vi1aExampleForLineRhythm } from './lib/demo-idioms';
+import {
+  canOfferTripletCrossBarJoin,
+  resolveJoinRhythm,
+  resolveLineRhythm,
+  supportsLineRhythmVariant,
+  usesTripletCrossBarJoin,
+} from './lib/idiom-rhythm';
 import { compInstrumentForMelody, compInstrumentLabel, iiViProgressionLabel } from './lib/comp';
 import { applyLineEndingNotes } from './lib/line-ending';
 import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
@@ -33,6 +40,7 @@ import {
   flattenChain,
   formatPitchClass,
   notesDurationQuarters,
+  notesForIdiomCardPlay,
   prependPickup,
   startPitchClass,
   transposeExample,
@@ -50,7 +58,7 @@ import {
   setMixerLevels,
   stopPlayback,
 } from './lib/playback';
-import type { BoundaryJoin, ChainItem, EntryRhythm, Example, Note, RegisterJoin } from './types';
+import type { BoundaryJoin, ChainItem, Example, JoinRhythm, LineRhythm, Note, RegisterJoin } from './types';
 import './App.css';
 
 const OCTAVE_MIN = -3;
@@ -94,11 +102,20 @@ function describeChainJoin(prev: ChainItem, curr: ChainItem): {
   );
 
   if (shared && (curr.registerJoin ?? 'align') === 'align') {
-    details.push(
-      (curr.entryRhythm ?? 'asWritten') === 'triplet'
-        ? 'End As Triplet — first note length matches the prior ending'
-        : 'As Written rhythm — keep this idiom’s note lengths at the join'
-    );
+    if (supportsLineRhythmVariant(curr.example.id)) {
+      details.push(
+        resolveLineRhythm(curr) === 'book'
+          ? 'Line — book triplet rhythm (as in xlsx)'
+          : 'Line — demo swung eighths on G–F–E'
+      );
+    }
+    if (canOfferTripletCrossBarJoin(prev.example, curr)) {
+      details.push(
+        usesTripletCrossBarJoin(curr)
+          ? 'Join — #24 through B, then Ab–G–F triplet to E (#1a B dropped)'
+          : 'Join — as written at the boundary'
+      );
+    }
   }
 
   const offset = curr.beatOffset ?? 0;
@@ -196,7 +213,7 @@ function ExampleCard({
         {canAdd && !inLine && (
           <button
             type="button"
-            className="btn btn--primary"
+            className="btn btn--action"
             onClick={onAdd}
           >
             Add to line
@@ -245,7 +262,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     const all = applyEdits(JAZZ_IDIOMS, edits);
     if (!demoMode) return all;
     const allowed = new Set<string>(DEMO_IDIOM_IDS);
-    return applyDemoIdiomOverrides(all.filter((e) => allowed.has(e.id)));
+    return all.filter((e) => allowed.has(e.id));
   }, [edits, demoMode]);
 
   const transposeSemitones = useMemo(
@@ -290,11 +307,14 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     return collapsedSections[sectionId] ?? false;
   };
 
-  const lineNotes = useMemo(() => {
-    const notes = flattenChain(chain);
-    if (chain.length === 0) return notes;
-    return applyLineEndingNotes(notes, chain[0]?.example.pickupBeat);
-  }, [chain]);
+  const isLineSummaryCollapsed = collapsedSections.lineSummary ?? true;
+
+  const lineNotes = useMemo(() => flattenChain(chain), [chain]);
+
+  const lineNotesWithEnding = useMemo(() => {
+    if (lineNotes.length === 0) return lineNotes;
+    return applyLineEndingNotes(lineNotes, chain[0]?.example.pickupBeat);
+  }, [lineNotes, chain]);
 
   const lineStaffExample = useMemo((): Example | null => {
     if (chain.length === 0 || lineNotes.length === 0) return null;
@@ -303,9 +323,9 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       section: 'Your Jazz Line',
       number: '',
       label: chain.map((item) => item.example.label).join(' · '),
-      notes: lineNotes,
+      notes: lineNotesWithEnding,
     };
-  }, [chain, lineNotes]);
+  }, [chain, lineNotesWithEnding]);
 
   const play = useCallback(
     async (
@@ -333,7 +353,15 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   );
 
   const handlePlayExample = (example: Example) => {
-    void play(prependPickup(example.notes, example.pickupBeat), false, false, example.pickupBeat);
+    const book = baseIdioms.find((e) => e.id === example.id) ?? example;
+    const playExample =
+      demoMode && book.id === 'idiom_v_i_n1a' ? demoVi1aCardExample(book) : book;
+    void play(
+      notesForIdiomCardPlay(prependPickup(playExample.notes, playExample.pickupBeat)),
+      false,
+      false,
+      playExample.pickupBeat
+    );
   };
 
   const handlePlayDraft = (notes: Note[], pickupBeat?: number) => {
@@ -391,7 +419,19 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handleAdd = (example: Example) => {
     if (chain.some((item) => item.example.id === example.id)) return;
-    setChain((prev) => [...prev, { example, octave: 0, boundaryJoin: 'merge' }]);
+    setChain((prev) => {
+      const last = prev[prev.length - 1];
+      const item: ChainItem = { example, octave: 0, boundaryJoin: 'merge' };
+      if (
+        demoMode &&
+        example.id === DEMO_RESOLUTION_ID &&
+        last?.example.id === 'idiom_v_i_n1a' &&
+        resolveLineRhythm(last) === 'book'
+      ) {
+        item.joinRhythm = 'tripletCrossBar';
+      }
+      return [...prev, item];
+    });
   };
 
   const handleRemoveLast = () => {
@@ -458,10 +498,27 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     );
   };
 
-  const setEntryRhythm = (index: number, mode: EntryRhythm) => {
+  const setLineRhythm = (index: number, mode: LineRhythm) => {
     if (index <= 0) return;
     setChain((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, entryRhythm: mode } : item))
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const next: ChainItem = { ...item, lineRhythm: mode, entryRhythm: undefined };
+        if (item.example.id === 'idiom_v_i_n1a') {
+          const book = idioms.find((e) => e.id === 'idiom_v_i_n1a');
+          if (book) next.example = vi1aExampleForLineRhythm(book, mode);
+        }
+        return next;
+      })
+    );
+  };
+
+  const setJoinRhythm = (index: number, mode: JoinRhythm) => {
+    if (index <= 0) return;
+    setChain((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, joinRhythm: mode, entryRhythm: undefined } : item
+      )
     );
   };
 
@@ -530,11 +587,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         if (isDemoChainWithResolution(prev)) {
           return buildDemoChainWithResolution(idioms);
         }
-        return prev.map((item) => {
-          const base = baseIdioms.find((e) => e.id === item.example.id);
-          if (!base) return item;
-          return { ...item, example: transposeExample(base, transposeSemitones) };
-        });
+        return syncDemoChainExamples(prev, idioms);
       });
       return;
     }
@@ -664,7 +717,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         <p className="chain-panel__summary-section">
           <strong>Ending:</strong> Last sounding pitch{' '}
           <strong>{chainEnd && formatPitchClass(chainEnd)}</strong>
-          {lineNotes.some((n) => n.fermata)
+          {lineNotesWithEnding.some((n) => n.fermata)
             ? ' — held through the resolution bar with a fermata when you play the line.'
             : '.'}
         </p>
@@ -692,9 +745,16 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     backingEnabled,
     chainEnd,
     lineNotes,
+    lineNotesWithEnding,
     instrument,
     lineLoop,
   ]);
+
+  const lineSummaryTeaser = useMemo(() => {
+    if (chain.length === 0) return 'How chaining and joins work';
+    const labels = chain.map((item) => item.example.label).join(' → ');
+    return `${labels} in ${selectedKey}`;
+  }, [chain, selectedKey]);
 
   return (
     <div className={`app${demoMode ? ' app--demo' : ''}`}>
@@ -760,7 +820,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           </label>
           <button
             type="button"
-            className="btn btn--primary"
+            className={`btn ${hasFullProgression ? 'btn--action' : 'btn--primary'}`}
             onClick={handlePlayChain}
             disabled={chain.length === 0 || playing}
           >
@@ -808,7 +868,6 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
         <div className="chain-panel__top">
           <div className="chain-panel__intro">
             <h2>Your Jazz Line</h2>
-            <p className="chain-panel__summary">{lineDescription}</p>
           </div>
           {chain.length > 0 && (
             <div className="chain-panel__actions">
@@ -865,6 +924,34 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           )}
         </div>
 
+        <div
+          className={`chain-panel__summary-callout${
+            isLineSummaryCollapsed ? ' chain-panel__summary-callout--collapsed' : ''
+          }`}
+        >
+          <button
+            type="button"
+            className="chain-panel__summary-toggle"
+            onClick={() => toggleSectionCollapsed('lineSummary')}
+            aria-expanded={!isLineSummaryCollapsed}
+            data-tooltip="Show or hide line explanation and join details"
+          >
+            <span
+              className={`chain-panel__summary-chevron${
+                isLineSummaryCollapsed ? '' : ' chain-panel__summary-chevron--open'
+              }`}
+              aria-hidden
+            />
+            <span className="chain-panel__summary-toggle-label">
+              <span className="chain-panel__summary-toggle-title">Line details</span>
+              <span className="chain-panel__summary-toggle-teaser">{lineSummaryTeaser}</span>
+            </span>
+          </button>
+          {!isLineSummaryCollapsed ? (
+            <div className="chain-panel__summary">{lineDescription}</div>
+          ) : null}
+        </div>
+
         {chain.length === 0 ? (
           <p className="empty-state">
             Start with a <strong>II–V</strong> idiom, then add <strong>V–I</strong> and{' '}
@@ -890,7 +977,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                   Start
                 </span>
                 <span className="chain-table__th" role="columnheader">
-                  Rhythm
+                  Line / Join
                 </span>
                 <span className="chain-table__th" role="columnheader">
                   Octave
@@ -1004,35 +1091,73 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
                     </div>
                     <div className="chain-table__cell" role="cell">
                       {i > 0 ? (
-                        <div
-                          className="chain-table__switches"
-                          role="group"
-                          aria-label={`Entry rhythm for ${item.example.label}`}
-                        >
-                          <button
-                            type="button"
-                            className={`btn btn--ghost btn--boundary${
-                              (item.entryRhythm ?? 'asWritten') === 'asWritten'
-                                ? ' btn--toggle-on'
-                                : ''
-                            }`}
-                            onClick={() => setEntryRhythm(i, 'asWritten')}
-                            aria-pressed={(item.entryRhythm ?? 'asWritten') === 'asWritten'}
-                            data-tooltip="Keep this idiom's written rhythm at the join"
-                          >
-                            As Written
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn--ghost btn--boundary${
-                              item.entryRhythm === 'triplet' ? ' btn--toggle-on' : ''
-                            }`}
-                            onClick={() => setEntryRhythm(i, 'triplet')}
-                            aria-pressed={item.entryRhythm === 'triplet'}
-                            data-tooltip="Match first note length to the prior ending (triplet entry)"
-                          >
-                            End As Triplet
-                          </button>
+                        <div className="chain-table__rhythm-stack">
+                          {supportsLineRhythmVariant(item.example.id) ? (
+                            <div
+                              className="chain-table__switches"
+                              role="group"
+                              aria-label={`Line rhythm for ${item.example.label}`}
+                            >
+                              <button
+                                type="button"
+                                className={`btn btn--ghost btn--boundary${
+                                  resolveLineRhythm(item) === 'book' ? ' btn--toggle-on' : ''
+                                }`}
+                                onClick={() => setLineRhythm(i, 'book')}
+                                aria-pressed={resolveLineRhythm(item) === 'book'}
+                                data-tooltip="Book triplet line from xlsx (G–F–E as triplet eighths)"
+                              >
+                                Book
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn btn--ghost btn--boundary${
+                                  resolveLineRhythm(item) === 'demoSwung' ? ' btn--toggle-on' : ''
+                                }`}
+                                onClick={() => setLineRhythm(i, 'demoSwung')}
+                                aria-pressed={resolveLineRhythm(item) === 'demoSwung'}
+                                data-tooltip="Demo swung pairs on G–F–E (card preview rhythm)"
+                              >
+                                Demo
+                              </button>
+                            </div>
+                          ) : null}
+                          {canOfferTripletCrossBarJoin(chain[i - 1].example, item) ? (
+                            <div
+                              className="chain-table__switches"
+                              role="group"
+                              aria-label={`Join rhythm for ${item.example.label}`}
+                            >
+                              <button
+                                type="button"
+                                className={`btn btn--ghost btn--boundary${
+                                  resolveJoinRhythm(item) === 'asWritten' ? ' btn--toggle-on' : ''
+                                }`}
+                                onClick={() => setJoinRhythm(i, 'asWritten')}
+                                aria-pressed={resolveJoinRhythm(item) === 'asWritten'}
+                                data-tooltip="Keep written rhythm at the shared pitch"
+                              >
+                                At Join
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn btn--ghost btn--boundary${
+                                  usesTripletCrossBarJoin(item) ? ' btn--toggle-on' : ''
+                                }`}
+                                onClick={() => setJoinRhythm(i, 'tripletCrossBar')}
+                                aria-pressed={usesTripletCrossBarJoin(item)}
+                                data-tooltip="B–D–G–F–B from #24, then Ab–G–F triplet to E (Once + Align)"
+                              >
+                                Triplet Join
+                              </button>
+                            </div>
+                          ) : (
+                            !supportsLineRhythmVariant(item.example.id) && (
+                              <span className="chain-table__placeholder" aria-hidden="true">
+                                —
+                              </span>
+                            )
+                          )}
                         </div>
                       ) : (
                         <span className="chain-table__placeholder" aria-hidden="true">
@@ -1328,7 +1453,9 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
       {staffExample && (
         <StaffCard
           example={staffExample}
-          playbackNotes={prependPickup(staffExample.notes, staffExample.pickupBeat)}
+          playbackNotes={notesForIdiomCardPlay(
+            prependPickup(staffExample.notes, staffExample.pickupBeat)
+          )}
           bpm={bpm}
           swing={swing}
           onClose={() => setStaffId(null)}

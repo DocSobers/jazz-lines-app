@@ -7,6 +7,8 @@ export interface Note {
   rest?: boolean;
   /** Bar-4 fermata hold when the line is extended to the backing cutoff */
   fermata?: boolean;
+  /** Join triplet: first three sounding notes of incoming idiom at a merged boundary. */
+  joinTriplet?: boolean;
 }
 
 export interface Example {
@@ -26,7 +28,13 @@ export type BoundaryJoin = 'merge' | 'restate';
 /** Whether the next idiom auto-aligns octave to the prior ending note at a shared pitch. */
 export type RegisterJoin = 'align' | 'asWritten';
 
-/** At a shared boundary, match the first note length to the prior ending (triplet entry). */
+/** Book rhythm vs demo swung copy (only for idioms with a curated variant, e.g. V–I #1a). */
+export type LineRhythm = 'book' | 'demoSwung';
+
+/** Cross-bar triplet stitch at a shared boundary (Align + Once). */
+export type JoinRhythm = 'asWritten' | 'tripletCrossBar';
+
+/** @deprecated Use `joinRhythm` / `lineRhythm` on ChainItem. */
 export type EntryRhythm = 'asWritten' | 'triplet';
 
 export interface ChainItem {
@@ -37,7 +45,11 @@ export interface ChainItem {
   boundaryJoin?: BoundaryJoin;
   /** Keep written register at join; shared boundary notes sound in each idiom's octave (no Once drop). */
   registerJoin?: RegisterJoin;
-  /** Match first note duration to prior ending at join (triplet feel); default keeps idiom rhythm. */
+  /** Book vs demo swung notes (V–I #1a only). */
+  lineRhythm?: LineRhythm;
+  /** Triplet cross-bar join at shared pitch (Align + Once). */
+  joinRhythm?: JoinRhythm;
+  /** @deprecated Use `joinRhythm` and `lineRhythm`. */
   entryRhythm?: EntryRhythm;
   /** Quarter-beat entry shift when chaining: positive = earlier, negative = later (pad). */
   beatOffset?: number;

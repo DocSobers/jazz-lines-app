@@ -3,6 +3,7 @@
   --radius: 12px;
   --font: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
   --font-ui: system-ui, -apple-system, sans-serif;
+  /* --join (per theme): green text for prompts — “do this next” */
 }
 
 /* Slate — default dark, cool blue-gray */
@@ -16,6 +17,7 @@
   --muted: #8fa3bf;
   --accent: #d4a85c;
   --accent-dim: #b08848;
+  /** Green — actionable prompts (“do this next”) */
   --join: #6aab88;
   --accent-on: #1a1205;
   --error: #d08080;

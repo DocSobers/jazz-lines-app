@@ -509,6 +509,32 @@ a.btn {
   background: var(--accent-soft);
 }
 
+/* Action prompts: green text for “do this next” copy and add-to-line controls */
+.text-action {
+  color: var(--join);
+}
+
+.text-action strong {
+  color: var(--join);
+  font-weight: 600;
+}
+
+.btn--action {
+  color: var(--join);
+  border-color: color-mix(in srgb, var(--join) 50%, var(--border));
+  background: var(--join-soft);
+}
+
+.btn--action:hover:not(:disabled) {
+  color: var(--join);
+  border-color: var(--join);
+  background: color-mix(in srgb, var(--join) 18%, var(--surface));
+}
+
+.btn--action:disabled {
+  opacity: 0.45;
+}
+
 .chain-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -526,12 +552,85 @@ a.btn {
 }
 
 .chain-panel__intro {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.75rem 1rem;
   flex: 1;
   min-width: 0;
+}
+
+.chain-panel__summary-callout {
+  margin: 0 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.chain-panel__summary-callout--collapsed {
+  margin-bottom: 0.75rem;
+}
+
+.chain-panel__summary-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.chain-panel__summary-toggle:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
+}
+
+.chain-panel__summary-toggle-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.6rem;
+  min-width: 0;
+}
+
+.chain-panel__summary-toggle-title {
+  font-weight: 600;
+  color: var(--join);
+  flex-shrink: 0;
+}
+
+.chain-panel__summary-toggle-teaser {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chain-panel__summary-chevron {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  margin-top: 1px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid currentColor;
+  transition: transform 0.15s ease;
+}
+
+.chain-panel__summary-chevron--open {
+  transform: rotate(90deg);
+}
+
+.chain-panel__summary-callout .chain-panel__summary {
+  flex: unset;
+  min-width: 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
 }
 
 .chain-panel__summary {
@@ -575,7 +674,7 @@ a.btn {
 .chain-panel__summary-tip {
   display: block;
   margin-top: 0.25rem;
-  color: color-mix(in srgb, var(--join) 70%, var(--text));
+  color: var(--join);
   font-weight: 500;
 }
 
@@ -588,7 +687,7 @@ a.btn {
 }
 
 .chain-panel__summary-section--progression-action {
-  color: color-mix(in srgb, var(--join) 72%, var(--text));
+  color: var(--join);
   padding: 0.45rem 0.55rem;
   margin-left: -0.55rem;
   margin-right: -0.55rem;
@@ -718,6 +817,12 @@ a.btn {
   min-height: 2rem;
 }
 
+.chain-table__rhythm-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .chain-table__switches {
   display: flex;
   align-items: center;
@@ -811,7 +916,12 @@ a.btn {
 
 .empty-state {
   margin: 0;
-  color: var(--muted);
+  color: var(--join);
+}
+
+.empty-state strong {
+  color: var(--join);
+  font-weight: 600;
 }
 
 .chain-list {
@@ -895,11 +1005,12 @@ a.btn {
 .join-hint {
   margin: 1rem 0 0;
   font-size: 0.9rem;
-  color: var(--muted);
+  color: var(--join);
 }
 
 .join-hint strong {
   color: var(--join);
+  font-weight: 600;
 }
 
 .join-hint--progression,
@@ -973,7 +1084,7 @@ a.btn {
   background: color-mix(in srgb, var(--join) 10%, var(--surface));
   font-size: 0.88rem;
   line-height: 1.55;
-  color: var(--text);
+  color: var(--join);
 }
 
 .demo-resolution-callout--section {
@@ -982,6 +1093,7 @@ a.btn {
 
 .demo-resolution-callout strong {
   color: var(--join);
+  font-weight: 600;
 }
 
 .example-card--demo-prompt {
@@ -989,8 +1101,13 @@ a.btn {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--join) 35%, transparent);
 }
 
+.join-hint--none {
+  color: var(--join);
+}
+
 .join-hint--none strong {
-  color: var(--muted);
+  color: var(--join);
+  font-weight: 600;
 }
 
 .compatible-section,

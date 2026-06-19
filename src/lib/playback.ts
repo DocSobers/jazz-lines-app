@@ -27,7 +27,7 @@ import { scheduleCompHits } from './comp-schedule';
 import { createDrumKit, disposeDrumChains, disposeDrumKit, type DrumKit } from './drum-sampler';
 import { scheduleDrumHits } from './drum-schedule';
 import { disposeMetronome, scheduleAnacrusisCountIn } from './metronome';
-import { quarterLengthSeconds, durationSeconds } from './timing';
+import { quarterLengthSeconds, durationSeconds, isSwungBeatPair, swungBeatFractions } from './timing';
 
 let currentInstrumentId: InstrumentId = 'nylon';
 const players: Partial<Record<InstrumentId, Sampler>> = {};
@@ -255,9 +255,116 @@ function noteSeconds(duration: string, bpm: number): number {
   return durationSeconds(duration, bpm);
 }
 
-function pairFillsQuarter(a: Note, b: Note, bpm: number, quarter: number): boolean {
-  const sum = noteSeconds(a.duration, bpm) + noteSeconds(b.duration, bpm);
-  return Math.abs(sum - quarter) < 0.001;
+function appendSwungBeatPair(
+  scheduled: ScheduledNote[],
+  time: number,
+  a: Note,
+  b: Note,
+  quarter: number,
+  swing: SwingAmount
+): number {
+  const [frac1, frac2] = swungBeatFractions(a.duration, b.duration, swing);
+  scheduled.push({
+    pitch: a.pitch,
+    rest: a.rest,
+    time,
+    duration: frac1 * quarter,
+  });
+  scheduled.push({
+    pitch: b.pitch,
+    rest: b.rest,
+    time: time + frac1 * quarter,
+    duration: frac2 * quarter,
+  });
+  return time + quarter;
+}
+
+/** Book figure: 4t+8t swung beat, then three 8t triplet eighths (e.g. II–V #24). */
+function isSwingTripletTailFive(
+  a: Note | undefined,
+  b: Note | undefined,
+  c: Note | undefined,
+  d: Note | undefined,
+  e: Note | undefined
+): boolean {
+  return (
+    a != null &&
+    b != null &&
+    c != null &&
+    d != null &&
+    e != null &&
+    !a.rest &&
+    !b.rest &&
+    !c.rest &&
+    !d.rest &&
+    !e.rest &&
+    a.duration === '4t' &&
+    b.duration === '8t' &&
+    c.duration === '8t' &&
+    d.duration === '8t' &&
+    e.duration === '8t' &&
+    !c.joinTriplet &&
+    !d.joinTriplet &&
+    !e.joinTriplet
+  );
+}
+
+/** Three written 8t eighths in triplet rhythm (not a swung pair + pickup). */
+function isWrittenTripletGroup(
+  a: Note | undefined,
+  b: Note | undefined,
+  c: Note | undefined
+): boolean {
+  return (
+    a != null &&
+    b != null &&
+    c != null &&
+    !a.rest &&
+    !b.rest &&
+    !c.rest &&
+    a.duration === '8t' &&
+    b.duration === '8t' &&
+    c.duration === '8t' &&
+    !a.joinTriplet &&
+    !b.joinTriplet &&
+    !c.joinTriplet
+  );
+}
+
+/** Join triplet at merged boundary: three flagged notes in written triplet rhythm. */
+function isJoinTripletGroup(
+  a: Note | undefined,
+  b: Note | undefined,
+  c: Note | undefined
+): boolean {
+  return (
+    a != null &&
+    b != null &&
+    c != null &&
+    !a.rest &&
+    !b.rest &&
+    !c.rest &&
+    a.joinTriplet === true &&
+    b.joinTriplet === true &&
+    c.joinTriplet === true
+  );
+}
+
+function appendJoinTripletGroup(
+  scheduled: ScheduledNote[],
+  time: number,
+  a: Note,
+  b: Note,
+  c: Note,
+  bpm: number
+): number {
+  const d1 = noteSeconds(a.duration, bpm);
+  const d2 = noteSeconds(b.duration, bpm);
+  const d3 = noteSeconds(c.duration, bpm);
+  scheduled.push({ pitch: a.pitch, rest: a.rest, time, duration: d1 });
+  scheduled.push({ pitch: b.pitch, rest: b.rest, time: time + d1, duration: d2 });
+  scheduled.push({ pitch: c.pitch, rest: c.rest, time: time + d1 + d2, duration: d3 });
+  return time + d1 + d2 + d3;
 }
 
 interface ScheduledNote {
@@ -282,15 +389,66 @@ export function scheduleNoteGroups(
 ): ScheduleNoteGroup[] {
   const schedule = buildSchedule(notes, bpm, swing);
   const groups: ScheduleNoteGroup[] = [];
-  const quarter = quarterSeconds(bpm);
   let schedIdx = 0;
   let i = 0;
 
   while (i < notes.length && schedIdx < schedule.length) {
     const current = notes[i];
     const next = notes[i + 1];
+    const next2 = notes[i + 2];
 
-    if (swing > 0 && next && pairFillsQuarter(current, next, bpm, quarter)) {
+    const next3 = notes[i + 3];
+    const next4 = notes[i + 4];
+
+    if (swing > 0 && isJoinTripletGroup(current, next, next2)) {
+      groups.push({ entry: schedule[schedIdx++], note: current });
+      groups.push({ entry: schedule[schedIdx++], note: next! });
+      groups.push({ entry: schedule[schedIdx++], note: next2! });
+      i += 3;
+      continue;
+    }
+
+    if (
+      swing > 0 &&
+      isSwingTripletTailFive(current, next, next2, next3, next4)
+    ) {
+      groups.push({ entry: schedule[schedIdx++], note: current });
+      groups.push({ entry: schedule[schedIdx++], note: next! });
+      groups.push({ entry: schedule[schedIdx++], note: next2! });
+      groups.push({ entry: schedule[schedIdx++], note: next3! });
+      groups.push({ entry: schedule[schedIdx++], note: next4! });
+      i += 5;
+      continue;
+    }
+
+    if (
+      swing > 0 &&
+      next &&
+      !current.rest &&
+      !next.rest &&
+      isSwungBeatPair(current.duration, next.duration)
+    ) {
+      groups.push({ entry: schedule[schedIdx++], note: current });
+      groups.push({ entry: schedule[schedIdx++], note: next });
+      i += 2;
+      continue;
+    }
+
+    if (swing > 0 && isWrittenTripletGroup(current, next, next2)) {
+      groups.push({ entry: schedule[schedIdx++], note: current });
+      groups.push({ entry: schedule[schedIdx++], note: next! });
+      groups.push({ entry: schedule[schedIdx++], note: next2! });
+      i += 3;
+      continue;
+    }
+
+    if (
+      swing > 0 &&
+      next &&
+      !current.rest &&
+      !next.rest &&
+      isSwungBeatPair(current.duration, next.duration)
+    ) {
       groups.push({ entry: schedule[schedIdx++], note: current });
       groups.push({ entry: schedule[schedIdx++], note: next });
       i += 2;
@@ -317,26 +475,41 @@ export function buildSchedule(
   while (i < notes.length) {
     const current = notes[i];
     const next = notes[i + 1];
+    const next2 = notes[i + 2];
 
-    if (swing > 0 && next && pairFillsQuarter(current, next, bpm, quarter)) {
-      const written1 = noteSeconds(current.duration, bpm) / quarter;
-      const written2 = noteSeconds(next.duration, bpm) / quarter;
-      const frac1 = 0.5 + swing * (written1 - 0.5);
-      const frac2 = 0.5 + swing * (written2 - 0.5);
-      scheduled.push({
-        pitch: current.pitch,
-        rest: current.rest,
-        time,
-        duration: frac1 * quarter,
-      });
-      scheduled.push({
-        pitch: next.pitch,
-        rest: next.rest,
-        time: time + frac1 * quarter,
-        duration: frac2 * quarter,
-      });
-      time += quarter;
+    if (isJoinTripletGroup(current, next, next2)) {
+      time = appendJoinTripletGroup(scheduled, time, current, next!, next2!, bpm);
+      i += 3;
+      continue;
+    }
+
+    const next3 = notes[i + 3];
+    const next4 = notes[i + 4];
+    if (
+      swing > 0 &&
+      isSwingTripletTailFive(current, next, next2, next3, next4)
+    ) {
+      time = appendSwungBeatPair(scheduled, time, current, next!, quarter, swing);
+      time = appendJoinTripletGroup(scheduled, time, next2!, next3!, next4!, bpm);
+      i += 5;
+      continue;
+    }
+
+    if (
+      swing > 0 &&
+      next &&
+      !current.rest &&
+      !next.rest &&
+      isSwungBeatPair(current.duration, next.duration)
+    ) {
+      time = appendSwungBeatPair(scheduled, time, current, next, quarter, swing);
       i += 2;
+      continue;
+    }
+
+    if (swing > 0 && isWrittenTripletGroup(current, next, next2)) {
+      time = appendJoinTripletGroup(scheduled, time, current, next!, next2!, bpm);
+      i += 3;
       continue;
     }
 
@@ -504,7 +677,10 @@ export async function playNotes(
       : null;
 
   const cycleNotesForPass = (rawNotes: Note[]) => {
-    const passNotes = applyLineEndingNotes(rawNotes, anacrusisPickupBeat);
+    const passNotes =
+      harmonyTimeline != null
+        ? applyLineEndingNotes(rawNotes, anacrusisPickupBeat)
+        : rawNotes;
     return loop ? notesForLoopCycle(passNotes) : passNotes;
   };
 

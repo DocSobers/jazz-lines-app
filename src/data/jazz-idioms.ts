@@ -486,9 +486,8 @@ export const JAZZ_IDIOMS: Example[] = [
     notes: [
       { pitch: 'B4', duration: '4t' },
       { pitch: 'D5', duration: '8t' },
-      { pitch: 'G4', duration: '4t' },
-      { pitch: 'Gb4', duration: '8t' },
-      { pitch: 'F4', duration: '4t' },
+      { pitch: 'G4', duration: '8t' },
+      { pitch: 'F4', duration: '8t' },
       { pitch: 'B3', duration: '8t' },
     ],
   },
@@ -535,9 +534,9 @@ export const JAZZ_IDIOMS: Example[] = [
       { rest: true, pitch: 'R', duration: '2n' },
       { pitch: 'B3', duration: '4t' },
       { pitch: 'Ab4', duration: '8t' },
-      { pitch: 'G4', duration: '8t' },
+      { pitch: 'G4', duration: '4t' },
       { pitch: 'F4', duration: '8t' },
-      { pitch: 'E4', duration: '8t' },
+      { pitch: 'E4', duration: '4n' },
     ],
   },
   {

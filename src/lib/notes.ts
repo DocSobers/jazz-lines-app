@@ -1,4 +1,5 @@
 import type { ChainItem, Example, Note } from '../types';
+import { isFullTripletLine, resolveJoinRhythm } from './idiom-rhythm';
 import { durationQuarters } from './timing';
 
 const PITCH_CLASS_SEMITONE: Record<string, number> = {
@@ -70,6 +71,11 @@ function pitchToMidi(pitch: string): number {
   const semitone = PITCH_CLASS_SEMITONE[pc];
   if (semitone === undefined) throw new Error(`Unknown pitch class: ${pc}`);
   return (pitchOctave(pitch) + 1) * 12 + semitone;
+}
+
+/** Semitone delta from one written pitch to another (e.g. Concert C → transposed key). */
+export function semitonesBetween(fromPitch: string, toPitch: string): number {
+  return pitchToMidi(toPitch) - pitchToMidi(fromPitch);
 }
 
 function midiToPitch(midi: number): string {
@@ -152,6 +158,11 @@ export function prependPickup(notes: Note[], pickupBeat?: number): Note[] {
     { rest: true, pitch: 'R', duration: `4n * ${pickupBeat}` },
     ...notes,
   ];
+}
+
+/** Card play: book/edited notes only — no chain join flags or surgery artifacts. */
+export function notesForIdiomCardPlay(notes: Note[]): Note[] {
+  return notes.map(({ joinTriplet: _, ...note }) => note);
 }
 
 function quartersToDuration(quarters: number): string {
@@ -288,6 +299,45 @@ function matchBoundaryEntryDuration(notesToAdd: Note[], prevEnding: Note): Note[
   return result;
 }
 
+/** Tag the first three sounding notes of the incoming idiom for join triplet playback. */
+function markIncomingJoinTriplet(notesToAdd: Note[]): Note[] {
+  const soundingIdx: number[] = [];
+  for (let i = 0; i < notesToAdd.length && soundingIdx.length < 3; i++) {
+    if (!notesToAdd[i].rest) soundingIdx.push(i);
+  }
+  if (soundingIdx.length < 3) return notesToAdd;
+
+  return notesToAdd.map((note, i) =>
+    soundingIdx.includes(i) ? { ...note, joinTriplet: true } : note
+  );
+}
+
+/** Drop the first sounding note (duplicate boundary pitch on the incoming idiom). */
+function stripFirstSoundingNote(notes: Note[]): Note[] {
+  const idx = notes.findIndex((note) => !note.rest);
+  if (idx < 0) return notes;
+  return [...notes.slice(0, idx), ...notes.slice(idx + 1)];
+}
+
+/**
+ * V–I triplet join: keep #24's ending B, drop #1a's B, Ab–G–F triplet resolving to E.
+ */
+function applyViTripletJoin(notesToAdd: Note[]): Note[] {
+  const stripped = stripFirstSoundingNote(notesToAdd).map(({ joinTriplet: _, ...note }) => note);
+
+  const soundingIdx: number[] = [];
+  for (let i = 0; i < stripped.length && soundingIdx.length < 3; i++) {
+    if (!stripped[i].rest) soundingIdx.push(i);
+  }
+  if (soundingIdx.length < 3) return stripped;
+
+  return stripped.map((note, i) =>
+    soundingIdx.slice(0, 3).includes(i)
+      ? { ...note, duration: '8t', joinTriplet: true }
+      : note
+  );
+}
+
 /** Per-idiom note spans after join/octave/entry rules (same logic as flattenChain). */
 export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
   if (items.length === 0) return [];
@@ -313,8 +363,22 @@ export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
       (curr.boundaryJoin ?? 'merge') === 'merge' &&
       (curr.registerJoin ?? 'align') !== 'asWritten';
 
+    const joinTripletCrossBar =
+      sharesBoundary &&
+      (curr.registerJoin ?? 'align') === 'align' &&
+      resolveJoinRhythm(curr) === 'tripletCrossBar' &&
+      !isFullTripletLine(curr.example);
+
+    const keepPriorBoundaryForViTriplet =
+      joinTripletCrossBar && curr.example.section === 'V-I';
+
     let boundaryNote: Note | undefined;
-    if (sharesBoundary && mergeBoundary && result.length > 0) {
+    if (
+      sharesBoundary &&
+      mergeBoundary &&
+      !keepPriorBoundaryForViTriplet &&
+      result.length > 0
+    ) {
       boundaryNote = result.pop();
       const lastSeg = segments[segments.length - 1];
       lastSeg.notes = lastSeg.notes.slice(0, -1);
@@ -338,11 +402,11 @@ export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
       }
     }
 
-    if (
-      sharesBoundary &&
-      (curr.registerJoin ?? 'align') === 'align' &&
-      (curr.entryRhythm ?? 'asWritten') === 'triplet'
-    ) {
+    if (keepPriorBoundaryForViTriplet) {
+      notesToAdd = applyViTripletJoin(notesToAdd);
+    } else if (joinTripletCrossBar && boundaryNote) {
+      notesToAdd = markIncomingJoinTriplet(notesToAdd);
+    } else if (joinTripletCrossBar) {
       const prevEnding = soundingNotes(items[i - 1].example.notes).at(-1);
       if (prevEnding) {
         notesToAdd = matchBoundaryEntryDuration(notesToAdd, prevEnding);
