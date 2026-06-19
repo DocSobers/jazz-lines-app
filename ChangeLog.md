@@ -217,6 +217,11 @@ Changes are listed in chronological order (oldest first).
 - Use fixed comp nominal dB levels so piano backing is audible under the melody.
 - Add `.env` to `.gitignore` for local Clerk and server secrets.
 
+#### `42f616f` — Add strict ii–V–I backing timeline and unified line endings for Your Line
+- Section-aware comp, bass, and drums on a fixed harmony grid; bar-4 fermata (3-beat I hold, drums stop before resolution bar).
+- Centralized line ending extends the last note through the resolution bar with staff fermata; applies to every Your Line chain.
+- Written/Align register joins, demo chain (II–V #3 → #24 → V–I #1a), table-style chain controls, and batch undo.
+
 ---
 
 ## Heroku Deploy Changelog
