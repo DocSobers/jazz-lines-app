@@ -163,7 +163,7 @@ Changes are listed in chronological order (oldest first).
 #### `903fd06` — Update ChangeLog for 76d9622 and Heroku v27
 - Record triplet notation fix and v27 deploy.
 
-### `feature/piano-backing` (in progress — not deployed)
+### Piano backing v1.5 (merged to `main` 2026-06-17)
 
 #### `8d3787d` — Start piano backing feature branch with Phase 1 progression model
 - Create `feature/piano-backing`; `main` stays production-ready (Heroku v27).
@@ -222,6 +222,9 @@ Changes are listed in chronological order (oldest first).
 - Centralized line ending extends the last note through the resolution bar with staff fermata; applies to every Your Line chain.
 - Written/Align register joins, demo chain (II–V #3 → #24 → V–I #1a), table-style chain controls, and batch undo.
 
+#### `c478229` — Update guest demo subtitle for the ii–V–I demo chain
+- Demo copy matches the built-in line (II–V #3 → #24 → V–I #1a) instead of legacy #1a/#2 wording.
+
 ---
 
 ## Heroku Deploy Changelog
@@ -257,7 +260,8 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 | **v24** | 2026-06-15 17:20 | Deploy `cbf4070` | Fix **Your line** loop stopping after first measure |
 | **v25** | 2026-06-15 17:35 | Deploy `0e49cb5` | Fix playhead stalling on rests during first loop pass |
 | **v26** | 2026-06-15 17:43 | Deploy `f7d1e3c` | Fix playhead finishing early and stalling on first loop pass |
-| **v27** | 2026-06-15 17:52 | Deploy `76d9622` | Render eighth-note triplets on staff notation (e.g. II-V #6b) *(current)* |
+| **v27** | 2026-06-15 17:52 | Deploy `76d9622` | Render eighth-note triplets on staff notation (e.g. II-V #6b) |
+| **v28** | 2026-06-17 | Deploy `c478229` | Piano backing v1.5: comp, bass, drums, mix desk, strict harmony grid, unified line endings *(pending — push `main` to Heroku)* |
 
 ### Notes on Heroku releases
 
@@ -269,4 +273,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-17*
+*Last updated: 2026-06-17 (Heroku v28 pending deploy)*
