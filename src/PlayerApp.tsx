@@ -477,7 +477,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
           <h1>Jazz Lines Player</h1>
           <p className="subtitle">
             {demoMode
-              ? 'Play II–V #1a or #2 individually, or use Play line for both together — sign up to unlock all idioms'
+              ? 'Try the demo ii–V–I line (II–V #3 → #24 → V–I #1a) with Play line — sign up to unlock all idioms'
               : 'Build a full ii–V–I line across sections, or chain any idioms freely'}
           </p>
         </div>
