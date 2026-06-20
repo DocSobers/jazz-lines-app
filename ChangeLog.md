@@ -225,12 +225,19 @@ Changes are listed in chronological order (oldest first).
 #### `c478229` — Update guest demo subtitle for the ii–V–I demo chain
 - Demo copy matches the built-in line (II–V #3 → #24 → V–I #1a) instead of legacy #1a/#2 wording.
 
-### `feature/demo-ux` (merged to `main` 2026-06-19 — Heroku v29)
+### `feature/demo-ux` (join triplet + #24 restore — merged to `main` 2026-06-17)
 
 #### `efffe42` — Improve guided demo UX with collapsible sections and line summary
 - Collapsible section headers on demo; hide **Show all** and curate demo idioms (#3, #24, #1a, #4).
 - I-maj #4 resolution call-out; **Your Jazz Line** summary with join tips and progression highlight.
 - Optional **As Written** / **End As Triplet** entry rhythm; demo V–I #1a swung eighths without triplet join.
+
+#### `1aefa70` — Add demo join triplet rhythm for II–V #24 → V–I #1a chain
+- Split **Line** vs **Join** rhythm controls; demo defaults: #24 Written, #1a book + triplet join.
+- Keep #24’s ending B at join, drop #1a’s B, Ab–G–F triplet to E; playback support for join triplet groups.
+
+#### `3703c39` — Restore II–V #24 to original six-note book line
+- Revert experimental #24 note reshaping; Gb and six written 8t pairs restored so the idiom matches the book.
 
 ---
 
@@ -283,4 +290,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-19 (Heroku v29)*
+*Last updated: 2026-06-17 (merge pending deploy)*

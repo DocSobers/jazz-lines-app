@@ -130,7 +130,29 @@ function groupMeasureNotes(notes: Note[]): NoteGroup[] {
       continue;
     }
 
+    if (
+      a?.joinTriplet &&
+      b?.joinTriplet &&
+      c?.joinTriplet
+    ) {
+      groups.push({ type: 'triplet', notes: [a, b, c] });
+      i += 3;
+      continue;
+    }
+
     if (a?.duration === '4t' && b?.duration === '8t') {
+      groups.push({ type: 'swing', notes: [a, b] });
+      i += 2;
+      continue;
+    }
+
+    if (a?.duration === '8t' && b?.duration === '8t') {
+      groups.push({ type: 'swing', notes: [a, b] });
+      i += 2;
+      continue;
+    }
+
+    if (a?.duration === '8t' && b?.duration === '4t') {
       groups.push({ type: 'swing', notes: [a, b] });
       i += 2;
       continue;
@@ -152,7 +174,16 @@ function groupMeasureNotes(notes: Note[]): NoteGroup[] {
 function writtenBeatsForGroup(group: NoteGroup): number {
   switch (group.type) {
     case 'swing':
+      return 1;
     case 'triplet':
+      if (
+        group.notes.length === 3 &&
+        group.notes[0].joinTriplet &&
+        group.notes[1].joinTriplet &&
+        group.notes[2].joinTriplet
+      ) {
+        return group.notes.reduce((sum, note) => sum + noteWrittenBeats(note), 0);
+      }
       return 1;
     case 'single':
       return noteWrittenBeats(group.notes[0]);
