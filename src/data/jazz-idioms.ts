@@ -484,9 +484,10 @@ export const JAZZ_IDIOMS: Example[] = [
     number: '24',
     label: 'II-V #24',
     notes: [
-      { pitch: 'B4', duration: '4t' },
+      { pitch: 'B4', duration: '8t' },
       { pitch: 'D5', duration: '8t' },
       { pitch: 'G4', duration: '8t' },
+      { pitch: 'Gb4', duration: '8t' },
       { pitch: 'F4', duration: '8t' },
       { pitch: 'B3', duration: '8t' },
     ],
