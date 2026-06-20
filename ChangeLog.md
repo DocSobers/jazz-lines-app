@@ -276,7 +276,8 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 | **v26** | 2026-06-15 17:43 | Deploy `f7d1e3c` | Fix playhead finishing early and stalling on first loop pass |
 | **v27** | 2026-06-15 17:52 | Deploy `76d9622` | Render eighth-note triplets on staff notation (e.g. II-V #6b) |
 | **v28** | 2026-06-19 12:03 | Deploy `f22fcd5` | Piano backing v1.5: comp, bass, drums, mix desk, strict harmony grid, unified line endings |
-| **v29** | 2026-06-19 13:32 | Deploy `1cebe04` | Guided demo UX: collapsible sections, curated idioms, I-maj #4 resolution flow, Your Jazz Line summary *(current)* |
+| **v29** | 2026-06-19 13:32 | Deploy `1cebe04` | Guided demo UX: collapsible sections, curated idioms, I-maj #4 resolution flow, Your Jazz Line summary |
+| **v30** | 2026-06-20 17:24 | Deploy `1fa6421` | Demo join triplet (#24→#1a Ab–G–F→E), line/join rhythm controls, II–V #24 book restore *(current)* |
 
 ### Notes on Heroku releases
 
@@ -286,8 +287,9 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 - **v12–v26:** Feature and bug-fix deploys aligned with the git commits listed above.
 - **v28:** Piano backing v1.5 — full rhythm section, mix desk, strict ii–V–I harmony grid, unified line endings.
 - **v29:** Guided demo UX — collapsible sections, curated demo idioms, I-maj #4 resolution prompt, line summary panel.
+- **v30:** Demo join triplet at #24→#1a (Ab–G–F→E), line/join rhythm controls, #24 restored to book line.
 - Commits prior to `55b4b35` (initial player through themes/staff) were developed and pushed to GitHub before Heroku deployment was configured; they shipped together in **v4**.
 
 ---
 
-*Last updated: 2026-06-17 (merge pending deploy)*
+*Last updated: 2026-06-20 (Heroku v30)*
