@@ -237,6 +237,9 @@ Changes are listed in chronological order (oldest first).
 - II–V #24: B–D swung, G–F–B triplet; keep #24’s B at join, drop #1a’s B, Ab–G–F triplet to E.
 - Playback support for swung-plus-triplet figures and join triplet groups at merged boundaries.
 
+#### `3703c39` — Restore II–V #24 to original six-note book line
+- Revert experimental #24 note reshaping; Gb and six written 8t pairs restored so the idiom matches the book.
+
 ---
 
 ## Heroku Deploy Changelog
@@ -286,4 +289,4 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 
 ---
 
-*Last updated: 2026-06-17 (`1aefa70` on `feature/demo-ux`)*
+*Last updated: 2026-06-17 (`3703c39` on `feature/demo-ux`, pending merge)*
