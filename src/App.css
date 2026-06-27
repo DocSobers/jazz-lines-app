@@ -10,10 +10,8 @@
 
 .navbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.55rem;
   margin: 0 -1.25rem 1.5rem;
   padding: 0.85rem 1.25rem;
   background: var(--surface);
@@ -21,6 +19,52 @@
   position: sticky;
   top: 0;
   z-index: 50;
+}
+
+.navbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.navbar__row--primary {
+  justify-content: space-between;
+}
+
+.navbar__row--secondary {
+  justify-content: flex-end;
+}
+
+.navbar__example {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.navbar__example-label {
+  white-space: nowrap;
+}
+
+.navbar__example-select {
+  min-width: 14rem;
+  max-width: min(100%, 22rem);
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.navbar__example-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
 }
 
 .navbar__brand {

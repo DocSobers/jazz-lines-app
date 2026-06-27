@@ -60,6 +60,76 @@ export function canJoin(previous: Example, next: Example): boolean {
   return endPitchClass(previous) === startPitchClass(next);
 }
 
+/** True when a merged boundary should use triplet feel (prior ending longer than incoming start). */
+export function needsLongerBoundaryTriplet(prevEnding: Note, nextStart: Note): boolean {
+  if (prevEnding.rest || nextStart.rest) return false;
+  if (pitchClass(prevEnding.pitch) !== pitchClass(nextStart.pitch)) return false;
+  const prevQ = durationQuarters(prevEnding.duration);
+  const nextQ = durationQuarters(nextStart.duration);
+  if (prevQ == null || nextQ == null) return false;
+  return prevQ > nextQ + 1e-9;
+}
+
+/** True when flattened notes include a join-triplet group touching the boundary pitch. */
+export function hasJoinTripletAtBoundary(
+  notes: Note[],
+  boundaryPitchClass: string
+): boolean {
+  for (let i = 0; i < notes.length - 2; i++) {
+    const a = notes[i];
+    const b = notes[i + 1];
+    const c = notes[i + 2];
+    if (
+      a &&
+      b &&
+      c &&
+      !a.rest &&
+      !b.rest &&
+      !c.rest &&
+      a.joinTriplet &&
+      b.joinTriplet &&
+      c.joinTriplet &&
+      (pitchClass(a.pitch) === boundaryPitchClass ||
+        pitchClass(b.pitch) === boundaryPitchClass ||
+        pitchClass(c.pitch) === boundaryPitchClass)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * True when a longer-boundary merge kept the prior ending and tripletized the
+ * incoming phrase (prior ending, optional rests, then three joinTriplet notes).
+ */
+export function hasLongerBoundaryTripletJoin(notes: Note[], prevEnding: Note): boolean {
+  for (let i = 0; i < notes.length; i++) {
+    const held = notes[i];
+    if (
+      held.rest ||
+      pitchClass(held.pitch) !== pitchClass(prevEnding.pitch) ||
+      held.duration !== prevEnding.duration
+    ) {
+      continue;
+    }
+
+    const triplet: Note[] = [];
+    for (let j = i + 1; j < notes.length && triplet.length < 3; j++) {
+      const note = notes[j];
+      if (!note.rest) triplet.push(note);
+    }
+
+    if (
+      triplet.length === 3 &&
+      triplet.every((note) => note.joinTriplet)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function pitchOctave(pitch: string): number {
   const match = pitch.match(/(\d+)$/);
   if (!match) throw new Error(`Invalid pitch: ${pitch}`);
@@ -320,9 +390,10 @@ function stripFirstSoundingNote(notes: Note[]): Note[] {
 }
 
 /**
- * V–I triplet join: keep #24's ending B, drop #1a's B, Ab–G–F triplet resolving to E.
+ * Cross-bar triplet join: keep the prior ending, drop the duplicate start,
+ * then tripletize the next three sounding notes (Ab–G–F style).
  */
-function applyViTripletJoin(notesToAdd: Note[]): Note[] {
+function applyCrossBarTripletJoin(notesToAdd: Note[]): Note[] {
   const stripped = stripFirstSoundingNote(notesToAdd).map(({ joinTriplet: _, ...note }) => note);
 
   const soundingIdx: number[] = [];
@@ -363,20 +434,30 @@ export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
       (curr.boundaryJoin ?? 'merge') === 'merge' &&
       (curr.registerJoin ?? 'align') !== 'asWritten';
 
+    const prevEnding = prevSounding.at(-1);
+    const currStart = currSounding[0];
+    const longerBoundaryTriplet =
+      prevEnding != null &&
+      currStart != null &&
+      needsLongerBoundaryTriplet(prevEnding, currStart);
+
     const joinTripletCrossBar =
       sharesBoundary &&
       (curr.registerJoin ?? 'align') === 'align' &&
       resolveJoinRhythm(curr) === 'tripletCrossBar' &&
       !isFullTripletLine(curr.example);
 
-    const keepPriorBoundaryForViTriplet =
-      joinTripletCrossBar && curr.example.section === 'V-I';
+    const keepPriorBoundaryForTriplet =
+      sharesBoundary &&
+      mergeBoundary &&
+      (longerBoundaryTriplet ||
+        (joinTripletCrossBar && curr.example.section === 'V-I'));
 
     let boundaryNote: Note | undefined;
     if (
       sharesBoundary &&
       mergeBoundary &&
-      !keepPriorBoundaryForViTriplet &&
+      !keepPriorBoundaryForTriplet &&
       result.length > 0
     ) {
       boundaryNote = result.pop();
@@ -393,8 +474,8 @@ export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
     }
 
     if (
-      curr.example.section === 'V-I' &&
-      (curr.registerJoin ?? 'align') === 'align'
+      (curr.registerJoin ?? 'align') === 'align' &&
+      (curr.example.section === 'V-I' || keepPriorBoundaryForTriplet)
     ) {
       const leading = leadingRestQuarters(notesToAdd);
       if (leading > 0) {
@@ -402,8 +483,8 @@ export function buildChainSegments(items: ChainItem[]): ChainSegment[] {
       }
     }
 
-    if (keepPriorBoundaryForViTriplet) {
-      notesToAdd = applyViTripletJoin(notesToAdd);
+    if (keepPriorBoundaryForTriplet) {
+      notesToAdd = applyCrossBarTripletJoin(notesToAdd);
     } else if (joinTripletCrossBar && boundaryNote) {
       notesToAdd = markIncomingJoinTriplet(notesToAdd);
     } else if (joinTripletCrossBar) {

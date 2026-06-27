@@ -8,7 +8,18 @@ import NavBar from './components/NavBar';
 import SiteFooter from './components/SiteFooter';
 import { isAdminUser } from './lib/auth';
 import CollapsibleSectionHeading from './components/CollapsibleSectionHeading';
-import { buildDemoChain, buildDemoChainWithResolution, demoVi1aCardExample, DEMO_IDIOM_IDS, DEMO_RESOLUTION_ID, isDefaultDemoChain, isDemoChainWithResolution, isDemoResolutionPending, syncDemoChainExamples, vi1aExampleForLineRhythm } from './lib/demo-idioms';
+import {
+  buildDemoChain,
+  buildDemoChainWithResolution,
+  demoVi1aCardExample,
+  DEMO_IDIOM_IDS,
+  DEMO_RESOLUTION_ID,
+  isDefaultDemoChain,
+  isDemoChainWithResolution,
+  isDemoResolutionPending,
+  syncDemoChainExamples,
+  vi1aExampleForLineRhythm,
+} from './lib/demo-idioms';
 import {
   canOfferTripletCrossBarJoin,
   resolveJoinRhythm,
@@ -16,6 +27,12 @@ import {
   supportsLineRhythmVariant,
   usesTripletCrossBarJoin,
 } from './lib/idiom-rhythm';
+import {
+  buildExampleChain,
+  exampleChainIdForIds,
+  EXAMPLE_CHAINS,
+  type ExampleChainId,
+} from './lib/example-chains';
 import { compInstrumentForMelody, compInstrumentLabel, iiViProgressionLabel } from './lib/comp';
 import { applyLineEndingNotes } from './lib/line-ending';
 import { INSTRUMENTS, type InstrumentId } from './lib/instruments';
@@ -257,6 +274,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [instrument, setInstrument] = useState<InstrumentId>('nylon');
   const [selectedKey, setSelectedKey] = useState<WheelKey>(REFERENCE_KEY);
+  const [exampleChainId, setExampleChainId] = useState<ExampleChainId | ''>('');
 
   const baseIdioms = useMemo(() => {
     const all = applyEdits(JAZZ_IDIOMS, edits);
@@ -419,6 +437,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   const handleAdd = (example: Example) => {
     if (chain.some((item) => item.example.id === example.id)) return;
+    setExampleChainId('');
     setChain((prev) => {
       const last = prev[prev.length - 1];
       const item: ChainItem = { example, octave: 0, boundaryJoin: 'merge' };
@@ -434,7 +453,17 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
     });
   };
 
+  const handleLoadExampleChain = (chainId: ExampleChainId) => {
+    const definition = EXAMPLE_CHAINS.find((item) => item.id === chainId);
+    if (!definition) return;
+    stopPlayback();
+    setPlaying(false);
+    setExampleChainId(chainId);
+    setChain(buildExampleChain(definition.idiomIds, idioms));
+  };
+
   const handleRemoveLast = () => {
+    setExampleChainId('');
     setChain((prev) => prev.slice(0, -1));
   };
 
@@ -451,6 +480,7 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
   const handleClear = () => {
     stopPlayback();
     setPlaying(false);
+    setExampleChainId('');
     setChain(demoMode ? buildDemoChain(idioms) : []);
   };
 
@@ -758,7 +788,16 @@ function AppShell({ clerkEnabled, canEdit, demoMode = false }: AppShellProps) {
 
   return (
     <div className={`app${demoMode ? ' app--demo' : ''}`}>
-      <NavBar edits={edits} clerkEnabled={clerkEnabled} isAdmin={canEdit} />
+      <NavBar
+        edits={edits}
+        clerkEnabled={clerkEnabled}
+        isAdmin={canEdit}
+        exampleChainId={
+          exampleChainId ||
+          exampleChainIdForIds(chain.map((item) => item.example.id))
+        }
+        onExampleChainChange={demoMode ? undefined : handleLoadExampleChain}
+      />
 
       <header className="header">
         <div>

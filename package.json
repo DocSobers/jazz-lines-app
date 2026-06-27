@@ -10,7 +10,8 @@
     "heroku-postbuild": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "import-idioms": "python3 scripts/import-jazz-idioms.py"
+    "import-idioms": "python3 scripts/import-jazz-idioms.py",
+    "check:boundary-triplet": "npx tsx scripts/check-boundary-triplet.ts"
   },
   "engines": {
     "node": "22.x"
