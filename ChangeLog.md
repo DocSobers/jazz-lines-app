@@ -290,6 +290,13 @@ URL: https://jazz-lines-app-414082402e4e.herokuapp.com/
 - **v30:** Demo join triplet at #24→#1a (Ab–G–F→E), line/join rhythm controls, #24 restored to book line.
 - Commits prior to `55b4b35` (initial player through themes/staff) were developed and pushed to GitHub before Heroku deployment was configured; they shipped together in **v4**.
 
+### `feature/examples-and-boundary-join` (in progress)
+
+#### `9774259` — Add Examples dropdown and auto triplet feel at longer boundary joins
+- **Examples:** navbar dropdown on the player with preset chained II–V, V–I, and I maj lines.
+- Auto cross-bar triplet join when a merged boundary ends on a longer note than the next idiom starts.
+- `npm run check:boundary-triplet` verifies eligible catalog pairs.
+
 ---
 
-*Last updated: 2026-06-20 (Heroku v30)*
+*Last updated: 2026-06-27*
